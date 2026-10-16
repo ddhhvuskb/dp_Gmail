@@ -1,17 +1,17 @@
 # 交接说明
 
 > **给下一个会话/开发者。** 本文件是接手入口，读完它再读 `STATUS.md`。
-> 最后更新：2026-10-16（第 38 轮，新增真实网络连接层验证）
+> 最后更新：2026-10-17（第 39 轮，真机收发验证通过 + 真实数据撞出并修掉一处解析缺陷）
 
 ---
 
 ## 1. 一句话现状
 
-**P0、P1、P2 三个阶段全部收口，193 个测试全绿，应用能跑。**
-**网络连接层已于 2026-10-16 真实验证** —— TLS 握手、证书校验、问候语解析、
-`CAPABILITY`、SMTP `EHLO`/`AUTH` 协商都已在 QQ / 163 真实服务器上跑通。
-**但邮箱层（`SELECT`/`FETCH`）与投递层（`DATA`）仍未执行：
-客户端至今没有收发过一封真实邮件。**
+**P0、P1、P2 三个阶段全部收口，195 个测试全绿（7 个真机用例默认 `#[ignore]`），应用能跑。**
+**2026-10-17：真机收发全部跑通** —— 真登录、真 `SELECT`/`FETCH`、真发信（含 HTML 与附件）、
+真投递、真解析。**客户端已经真的收发过邮件了。**
+剩下的主要是三件：网易 `ID` 命令未在真实 163 账户上验证、
+列表硬顶 200 条且无翻页（见 `perf-verification.md` §6.3）、ARM64 构建。
 
 ---
 
@@ -35,45 +35,42 @@
 | P0-01~08 | 服务商识别、IMAP 连接、MIME 解析、HTML 净化、SQLite 表、Tauri 命令、账户界面、邮件列表+详情、凭证加密、CI |
 | P1 | FTS5 全文检索（trigram + LIKE 回退）、多账户 + 统一收件箱、搜索界面 |
 | P2 | 发信全链路：纯文本 / HTML / 附件 / STARTTLS + 写信界面 + 回复转发 |
-| 额外 | IMAP 侧 STARTTLS、网易 `ID` 命令、163 服务商、性能实测、真实数据实跑、XSS 端到端验证、**真实网络连接层验证**（`live-network-verification.md`） |
+| 额外 | IMAP 侧 STARTTLS、网易 `ID` 命令、163 服务商、性能实测、真实数据实跑、XSS 端到端验证、**真实网络连接层验证**（`live-network-verification.md`）、**真机收发验证 + 真实数据解析体检**（`live-account-verification.md`） |
 
 ---
 
-## 4. 必须知道的两个阻塞
+## 4. 阻塞情况
 
-### 4.1 QQ 授权码（仍是最大风险来源，但**连接层已不再空白**）
+### 4.1 QQ 授权码 —— ✅ **2026-10-17 已解除**
 
-> **2026-10-16 更新。** 下面的「零真实执行」说法**已作废** ——
-> 验证连接层根本不需要授权码：用伪造凭证登录、断言错误落在协议层即可。
-> 4 条建连路径已全部连上真实服务器，见 `live-network-verification.md`。
+用户提供了真实账号与授权码，**真机收发全部跑通**：
 
-已真实跑通（4/4）：
-
-| 路径 | 服务器实际回话 |
+| 验证 | 结果 |
 | --- | --- |
-| `imap.qq.com:993` 隐式 TLS → 问候语 → `CAPABILITY` → `LOGIN` | `Login fail. Please input email address` |
-| `imap.163.com:143` 明文 → `STARTTLS` → TLS → `LOGIN` | `LOGIN Login error or password error` |
-| `smtp.qq.com:465` 隐式 TLS → `EHLO` → `AUTH` | `535 Login fail. …` |
-| `smtp.qq.com:587` `STARTTLS` → TLS → `AUTH` | `535 Login fail. …` |
+| `fetch_recent` 真收信 | ✅ 真登录 / `SELECT` / `FETCH` / MIME 解析，拉到 4 封真实邮件 |
+| `send_mail` 真发信 | ✅ 自寄一封带 HTML + 附件的邮件，约 40 秒后在自己的 INBOX 收到 |
+| `send_client_id_if_supported` | ✅ 首次真实执行（QQ 的 `CAPABILITY` 确含 `ID`） |
 
-即 **TLS 握手、证书校验、问候语解析、`CAPABILITY`、SMTP 能力协商均已确认真实可用**：
+凭证**只从环境变量读**（`DP_GMAIL_TEST_USER` / `DP_GMAIL_TEST_SECRET`），
+测试文件里不含账号或授权码：
 
 ```text
-cargo test --manifest-path src-tauri/Cargo.toml --test live_network_test -- --ignored --nocapture
+cargo test --manifest-path src-tauri/Cargo.toml --test live_account_test -- --ignored --nocapture --test-threads=1
 ```
 
-**但客户端仍然没有收发过一封真实邮件**，授权码仍卡住这些：
+**「客户端从未收发过一封真实邮件」这句话已作废。** 详见 `live-account-verification.md`。
+
+真实数据还撞出一处合成数据永远撞不到的解析缺陷（`From` 头没有地址、真实地址在
+`Sender` 头里），已修并复验。**合成数据只能证明代码自洽，证明不了它对付得了现实。**
+
+#### 还没关掉的
 
 | 仍未验证 | 为什么 |
 | --- | --- |
-| `SELECT` / `FETCH` / `fetch_recent` | 会话未建立，邮箱层零执行 |
-| SMTP `DATA` 阶段 | 认证先失败，报文从未上线 |
-| 网易 `ID` 命令 | 它在 `login` **成功之后**才调用 ⇒ 本次完全没执行到 |
-| 端到端回复、真实投递与呈现 | 同上 |
-
-获取方式：mail.qq.com → 设置 → 账户 → 开启 IMAP/SMTP 服务 → 生成 16 位授权码。
-
-拿到后可在一轮内验证：真实收信、真实发信、端到端回复。
+| 网易 `ID` 命令 | 本次只有 QQ 账号，而 QQ 对 `ID` 不敏感 —— 该分支仍未在真实 163 上走过 |
+| 大附件 / 被服务器拒收 | 未测 |
+| 中文主题在第三方客户端里的呈现 | 只验证了自己收自己 |
+| **列表硬顶 200 条且无翻页** | 与网络无关的功能缺口，见 `perf-verification.md` §6.3 |
 
 ### 4.2 企业邮箱方案（待决策）
 

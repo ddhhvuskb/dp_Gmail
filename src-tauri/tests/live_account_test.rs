@@ -163,7 +163,9 @@ async fn live_send_then_receive_roundtrip() {
         from: user.clone(),
         to: vec![user.clone()],
         subject: subject.clone(),
-        body_text: format!("这是 dp_Gmail 的真机自检邮件，时间戳 {stamp}。收到即证明发信链路成立。"),
+        body_text: format!(
+            "这是 dp_Gmail 的真机自检邮件，时间戳 {stamp}。收到即证明发信链路成立。"
+        ),
         body_html: Some(format!(
             "<p>这是 <b>dp_Gmail</b> 的真机自检邮件，时间戳 {stamp}。</p>"
         )),

@@ -79,7 +79,12 @@ cargo test --manifest-path src-tauri/Cargo.toml --test live_network_test -- --ig
 
 ---
 
-## 3. 仍然未验证的边界（**没有缩小到零**）
+## 3. 仍然未验证的边界（**本节已于 2026-10-17 被追平**）
+
+> ⚠️ **本节内容已过期，保留原样作为当时的记录。**
+> 下表中的「成功的登录」「`send_client_id_if_supported`」「`SELECT` / `FETCH`」
+> 「SMTP `DATA`」「真实投递」**均已真机跑通**，见 `live-account-verification.md`。
+> 本节准确描述的是「只做了连接层验证」那一刻的边界。
 
 本次只证明了**连接层**。以下仍然一个字节都没跑过：
 

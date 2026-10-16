@@ -133,3 +133,48 @@ fn parses_binary_garbage_best_effort() {
     assert_eq!(parsed.from, None);
     assert!(parsed.attachments.is_empty());
 }
+
+/// `From` 只有显示名、地址在 `Sender` 里 —— 2026-10-17 在真实收件箱里撞到 2 例。
+///
+/// ```text
+/// From: =?utf-8?b?Tk9J56ue6LWb5Yqe5YWs5a6k?=      ← 解码后是「NOI竞赛办公室」
+/// Sender: reg@notice.noi.cn
+/// ```
+///
+/// 修之前这类邮件的发件人是 `None`，界面上成了无主邮件。
+#[test]
+fn falls_back_to_sender_when_from_has_no_address() {
+    let raw = crlf(
+        "From: =?utf-8?b?Tk9J56ue6LWb5Yqe5YWs5a6k?=\n\
+         Sender: reg@notice.noi.cn\n\
+         Subject: test\n\
+         \n\
+         body\n",
+    );
+
+    let parsed = parse_message(&raw).expect("应当解析成功");
+    let from = parsed.from.expect("回退到 Sender 后应当有发件人");
+    assert_eq!(from.address, "reg@notice.noi.cn");
+    assert_eq!(
+        from.name.as_deref(),
+        Some("NOI竞赛办公室"),
+        "回退取地址，但显示名要用 From 里那个"
+    );
+}
+
+/// 上一条回退的守门用例：`From` 有地址时**不得**被 `Sender` 顶掉。
+#[test]
+fn prefers_from_when_it_has_an_address() {
+    let raw = crlf(
+        "From: 张三 <zhangsan@qq.com>\n\
+         Sender: bounce@list.example.com\n\
+         Subject: test\n\
+         \n\
+         body\n",
+    );
+
+    let parsed = parse_message(&raw).expect("应当解析成功");
+    let from = parsed.from.expect("From 有地址，应当直接取到");
+    assert_eq!(from.address, "zhangsan@qq.com");
+    assert_eq!(from.name.as_deref(), Some("张三"));
+}
