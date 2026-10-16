@@ -154,6 +154,7 @@ P0-05 落地后它已不成立，容易误导使用者。已改为「先在左�
 | `performance_test` | 7 |
 | `smtp_send_test` | 19 |
 | `provider_163_test` | 6 |
+| `resolve_provider_test` | 7 |
 | `compose_test` | 11 |
 | `message_detail_test` | 5 |
 | `list_accounts_test` | 5 |
@@ -236,7 +237,7 @@ src/
 
 ### P1 完成度：**3/3 全部落地**
 
-### 累计测试：**190 全绿**
+### 累计测试：**192 全绿**
 
 ### 依赖记录
 
