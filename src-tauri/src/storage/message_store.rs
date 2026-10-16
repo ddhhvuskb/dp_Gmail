@@ -106,8 +106,9 @@ pub fn upsert_message(
 /// 列表用摘要。
 ///
 /// **不是**数据库行 —— `DESIGN.md` P0-04 明确禁止命令层返回原始 DB 行，
-/// 故这里只暴露前端渲染需要的字段。
-#[derive(Debug, Clone, PartialEq, Eq)]
+/// 故这里只暴露前端渲染需要的字段。`Serialize` 是为了让 Tauri 命令直接返回它，
+/// 避免再复制一份逐字段等同的 DTO。
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
 pub struct MessageSummary {
     pub id: i64,
     pub uid: i64,

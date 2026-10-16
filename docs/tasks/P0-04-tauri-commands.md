@@ -36,7 +36,7 @@
 | --- | --- | --- |
 | P0-04a | Tauri 脚手架（`build.rs` / `tauri.conf.json` / `main.rs` / `run()` / 图标 / capabilities） | ✅ |
 | P0-04b | `storage::list_messages` 分页查询 + `MessageSummary` DTO | ✅ |
-| P0-04c | `commands::messages::get_messages` 命令 | ⬜ |
+| P0-04c | `commands::messages::get_messages` 命令 + 分页参数校验 | ✅ |
 | P0-04d | `commands::sync::sync_folder` 命令 | ⛔ 待 P0-07 |
 
 ---
@@ -124,3 +124,21 @@ pub async fn get_messages(
 | `cargo fmt --check` | exit 0 ✅ |
 | `npm run build`（含 `tsc --noEmit`） | exit 0 ✅ |
 | `cargo test --test list_messages_test` | **6/6 通过** ✅ |
+| `cargo test --test commands_test` | **4/4 通过** ✅ |
+| 累计（全部测试） | **53/53 通过** ✅ |
+
+### 6.1 P0-04c 实施要点
+
+- `get_messages` 是**同步**命令。SQLite 带 `LIMIT` 的本地查询是微秒级，上异步只会引入 `MutexGuard` 跨 `await` 的 `Send` 问题，没有收益。
+- 参数校验收敛为一个纯函数 `normalize_paging(limit, offset) -> (u32, u32)`，把 `limit` 钳到 `1..=200`。这样命令层**唯一有逻辑的地方**可以被独立测试。
+- `MessageSummary` 直接 `derive(serde::Serialize)`，避免在 `commands/` 再复制一份逐字段等同的 DTO（那是过度设计）。
+- 数据库路径：`app.path().app_data_dir()?` + `dp_gmail.sqlite`，`setup` 阶段建目录、开库、`app.manage(AppState::new(conn))`。
+
+### 6.2 待解决：P0-06「详情」缺少取正文的命令
+
+P0-04 的命令清单是 `add_account / sync_folder / get_messages` 三个。
+但 P0-06 要求「邮件列表 **+ 详情**」，而 `get_messages` 只返回摘要（不含 `text_body` / `html_body`）。
+
+要么新增一个取单封详情的命令（属于新增接口，按第六章需人工确认），
+要么让 `get_messages` 连带返回正文（列表页会白白搬运大量正文，且违背摘要 DTO 的初衷）。
+**已提交用户决策，未获答复前不擅自新增命令。**
