@@ -38,6 +38,7 @@ pub fn run() {
             commands::accounts::add_account,
             commands::accounts::list_accounts,
             commands::accounts::resolve_provider,
+            commands::compose::send_mail,
             commands::folders::list_folders,
             commands::messages::get_message,
             commands::messages::get_messages,

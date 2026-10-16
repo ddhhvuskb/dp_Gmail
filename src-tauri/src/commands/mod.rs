@@ -4,6 +4,7 @@
 //! （见 `DESIGN.md` P0-04 约束与禁用项）。真正的实现分别在 `storage` / `mail` / `security`。
 
 pub mod accounts;
+pub mod compose;
 pub mod folders;
 pub mod messages;
 pub mod search;

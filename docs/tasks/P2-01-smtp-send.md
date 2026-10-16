@@ -14,7 +14,7 @@
 | P2-01a | `mail/smtp.rs`：`send_mail` + `build_message`（纯文本 / 隐式 TLS / 30s） | ✅ |
 | P2-01b | HTML 正文（`multipart/alternative`） | ✅ |
 | P2-01c | 附件（`MultiPart::mixed`） | ✅ |
-| P2-01d | `commands::send_mail`（解密凭证 → 投递） | ⬜ |
+| P2-01d | `commands::compose::send_mail`（解密凭证 → 投递） | ✅ |
 | P2-01e | 写信/回复/转发界面 | ⬜ |
 | P2-01f | STARTTLS（587）支持 | ⬜ |
 
@@ -79,7 +79,24 @@ pub fn build_message(mail: &OutgoingMail) -> Result<Message, MailError>;
 | `cargo check --all-targets` | exit 0，零警告 ✅ |
 | `cargo fmt --check` / `cargo clippy -D warnings` | exit 0 ✅ |
 | `cargo test --test smtp_send_test` | **18/18 通过**（0.00s，未触网）✅ |
-| 全量测试 | **172/172 通过** ✅ |
+| `cargo test --test compose_test` | **11/11 通过** ✅ |
+| 全量测试 | **183/183 通过** ✅ |
+
+### 4.4 命令层：附件为什么传路径而不是字节
+
+`commands::compose::send_mail` 的附件入参是**文件路径**，不是字节数组。
+
+前端传 `Vec<u8>` 会被序列化成 JSON 数字数组（一个字节一个数字），
+几 MB 的附件就能把 IPC 打爆。由 Rust 侧读文件既快又省事。
+
+配套约束：
+
+- 合计体积上限 **25 MiB**（国内邮箱普遍限 20–50 MB，留出编码膨胀余量）；
+- MIME 类型由**扩展名**推断，猜不到一律 `application/octet-stream` ——
+  猜错（比如把 exe 当 image/png）比不猜更糟；
+- 显示名缺省取路径文件名，两者都没有就报错，**不编一个假名字出来**。
+
+同样沿用三段式：附件读取（同步 IO）→ 解密凭证（加锁）→ SMTP 投递（不持锁）。
 
 ### 4.1 测试为何只覆盖"网络之前"
 
