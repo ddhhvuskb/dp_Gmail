@@ -20,4 +20,16 @@ pub enum MailError {
 
     #[error("网络错误：{0}")]
     Io(#[from] std::io::Error),
+
+    #[error("收件人不能为空")]
+    NoRecipients,
+
+    #[error("邮箱地址格式非法：{0}")]
+    BadAddress(String),
+
+    #[error("邮件组装失败：{0}")]
+    BuildMail(#[from] lettre::error::Error),
+
+    #[error("SMTP 错误：{0}")]
+    Smtp(#[from] lettre::transport::smtp::Error),
 }

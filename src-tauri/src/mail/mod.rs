@@ -6,4 +6,5 @@ pub mod error;
 pub mod imap_client;
 pub mod parser;
 pub mod provider;
+pub mod smtp;
 pub mod sync;

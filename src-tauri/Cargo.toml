@@ -41,6 +41,11 @@ aes-gcm = "0.11"
 zeroize = { version = "1", features = ["derive"] }
 # 密钥文件（版本化 JSON）的 base64 编解码。async-imap 已传递依赖此版本。
 base64 = "0.23"
+# SMTP 发信（P2）。选 lettre 而非手写 SMTP：EHLO/STARTTLS/AUTH/MIME 组装的
+# 边界情况极多，手写必然出错。默认 feature 已含 smtp-transport/pool/native-tls/
+# hostname/builder，这里只补 tokio1-native-tls 以接入现有异步运行时与 TLS 路线。
+# 决策记录见 docs/adr/ADR-0003-smtp-send.md。
+lettre = { version = "0.11", features = ["tokio1-native-tls"] }
 futures = "0.3"
 thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "io-util"] }
