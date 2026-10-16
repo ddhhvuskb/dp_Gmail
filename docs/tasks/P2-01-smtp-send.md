@@ -11,8 +11,8 @@
 
 | 子任务 | 交付物 | 状态 |
 | --- | --- | --- |
-| P2-01a | `mail/smtp.rs`：`send_mail`（纯文本、隐式 TLS、30s 超时） | ✅ |
-| P2-01b | HTML 正文（multipart/alternative） | ⬜ |
+| P2-01a | `mail/smtp.rs`：`send_mail` + `build_message`（纯文本 / 隐式 TLS / 30s） | ✅ |
+| P2-01b | HTML 正文（`multipart/alternative`） | ✅ |
 | P2-01c | 附件（`MultiPart::mixed` + RFC2231 长文件名） | ⬜ |
 | P2-01d | `commands::send_mail`（解密凭证 → 投递） | ⬜ |
 | P2-01e | 写信/回复/转发界面 | ⬜ |
@@ -29,6 +29,8 @@ pub struct OutgoingMail {
     pub to: Vec<String>,
     pub subject: String,
     pub body_text: String,
+    /// 提供时以 multipart/alternative 同时发送纯文本与 HTML。
+    pub body_html: Option<String>,
 }
 
 /// 凭证只在内存中传递，不得被日志记录。
@@ -38,6 +40,9 @@ pub async fn send_mail(
     secret: &str,
     mail: &OutgoingMail,
 ) -> Result<(), MailError>;
+
+/// 单独暴露以便脱离网络验证 —— 组装结果不该因为 send_mail 会建连而失去覆盖。
+pub fn build_message(mail: &OutgoingMail) -> Result<Message, MailError>;
 ```
 
 新增 `MailError` 变体：`NoRecipients`、`BadAddress(String)`、`BuildMail`（lettre 组装错误）、`Smtp`（lettre 传输错误）。
@@ -72,22 +77,41 @@ pub async fn send_mail(
 | 检查项 | 实测 |
 | --- | --- |
 | `cargo check --all-targets` | exit 0，零警告 ✅ |
-| `cargo fmt --check` | exit 0 ✅ |
-| `cargo test --test smtp_test` | **6/6 通过**（耗时 0.00s，未触网）✅ |
-| 全量测试 | 待本轮收尾统一跑 |
+| `cargo fmt --check` / `cargo clippy -D warnings` | exit 0 ✅ |
+| `cargo test --test smtp_send_test` | **11/11 通过**（0.00s，未触网）✅ |
+| 全量测试 | **161/161 通过** ✅ |
 
 ### 4.1 测试为何只覆盖"网络之前"
 
 真正的投递需要真实 SMTP 服务器。在单测里连 `smtp.qq.com` 既慢又没意义，
-而且会把测试变成对外部服务的依赖。故本轮只测参数校验路径，
-**真实投递必须等 QQ 授权码到位后做端到端联调**。
+而且会把测试变成对外部服务的依赖。
 
-这一限制已明确记录，不含糊过去。
+但**报文组装不依赖网络**，那部分必须测。故把 `build_message` 单独公开出来，
+用 `Message::formatted()` 取到原始 RFC5322 字节直接断言：
+
+| 性质 | 用例 |
+| --- | --- |
+| 纯文本邮件**不**套 multipart（单部分兼容性最好） | `plain_only_yields_single_part_message` |
+| 有 HTML 时产出 `multipart/alternative`，**且纯文本那一份仍在** | `html_yields_multipart_alternative_carrying_both_parts` |
+| multipart 必须声明 `boundary=` | `multipart_declares_a_boundary` |
+| 组装阶段就拒绝非法收发件人 | `build_message_rejects_bad_*` |
+
+> 断言一律用 **ASCII 标记**：中文主题会被 RFC2047 编码成 `=?utf-8?…?=`，
+> 直接在原始报文里找不到原字 —— 用中文断言只会得到假失败。
+
+### 4.2 本轮两处工程教训
+
+1. **不要用 PowerShell 5.1 的 `Set-Content -Encoding UTF8` 改 UTF-8 源码。**
+   我用它给 `smtp_test.rs` 加一行 import，结果整个文件的中文变成乱码，编译直接失败。
+   改源码一律用 `edit` / `write` 工具。文件已重写为 `smtp_send_test.rs`。
+2. **`Match` 的可见性决定了可测性。** 原本 `build_message` 是私有的，
+   于是 HTML 路径一行都测不到 —— 测试全绿，但新功能零覆盖。把它公开后才补上真正的验证。
 
 ---
 
 ## 5. 尚未验证
 
-- **`send_mail` 从未真的发出去过一封信。** 全部路径都止步于建连之前。
-  真实投递（TLS 握手、AUTH、DATA）**完全未验证**。
-- HTML 正文与附件尚未实现。
+- **`send_mail` 从未真的发出去过一封信。** TLS 握手、AUTH、DATA 三段**完全未验证**。
+  已覆盖的是：参数校验、校验顺序、MIME 组装。
+- 附件尚未实现。
+- STARTTLS（587）尚未实现。

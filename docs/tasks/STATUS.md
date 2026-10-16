@@ -152,7 +152,7 @@ P0-05 落地后它已不成立，容易误导使用者。已改为「先在左�
 | `search_store_test` | 12 |
 | `unified_inbox_test` | 13 |
 | `performance_test` | 7 |
-| `smtp_test` | 6 |
+| `smtp_send_test` | 11 |
 | `message_detail_test` | 5 |
 | `list_accounts_test` | 5 |
 | `resolve_provider_test` | 5 |
@@ -227,14 +227,14 @@ src/
 | P1-01 | **FTS5 全文检索**（schema v3 + `search_messages`） | ✅ 12/12 + 5/5 |
 | P1-02 | **多账户 + 统一收件箱**（`list_folders` / `list_unified_messages`） | ✅ 后端 13/13 |
 | P1-03 | **搜索界面 + 统一收件箱界面**（文件夹树 / 搜索框 / ListMode） | ✅ 已实跑验证 |
-| P2-01a | **`mail/smtp.rs` 发信核心**（纯文本 / 隐式 TLS / 30s 超时） | ✅ 6/6 |
-| P2-01b~f | HTML 正文 / 附件 / `send_mail` 命令 / 写信界面 / STARTTLS | ⬜ |
+| P2-01a/b | **`mail/smtp.rs` 发信**（纯文本 + HTML 正文 / 隐式 TLS / 30s） | ✅ 11/11 |
+| P2-01c~f | 附件 / `send_mail` 命令 / 写信界面 / STARTTLS | ⬜ |
 | P3 | 国内邮箱兼容层 + OAuth | ⬜ |
 | P4 | UI 打磨 + 可选 AI 摘要/待办提取 | ⬜ |
 
 ### P1 完成度：**3/3 全部落地**
 
-### 累计测试：**158 全绿**
+### 累计测试：**161 全绿**
 
 ### 依赖记录
 
@@ -298,3 +298,4 @@ P0-08 CI（无依赖，可随时做）
 | 2026-10-16 | **性能验收实测**：1000 封种子数据下最慢 6.14 ms（预算 200 ms）；搜索与 LIKE 回退的性能风险解除；修正一处「零命中也能通过」的假阳性用例 |
 | 2026-10-16 | **真实数据实跑**：1260 封仿真数据灌入真实库；文件夹计数、列表渲染、未读样式、附件徽标全部正确；**端到端验证 XSS 净化拦住 `<script>` 与 `onerror`**；FTS 触发器对外部写入同样生效 |
 | 2026-10-16 | **进入 P2**：**P2-01a SMTP 发信核心完成**（ADR-0003 记录 lettre 选型）；测试只覆盖建连之前的校验路径，**真实投递未验证** |
+| 2026-10-16 | **P2-01b HTML 正文完成**：`multipart/alternative`；把 `build_message` 公开以脱离网络验证 MIME 组装（+5 用例）。**教训**：`build_message` 私有导致新功能零覆盖；PowerShell `Set-Content` 两次弄坏 UTF-8 源码与文档，已从 git 恢复 |
