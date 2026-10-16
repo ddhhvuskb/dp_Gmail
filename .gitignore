@@ -17,6 +17,7 @@ node_modules/
 *.key
 *.keyfile
 keyfile.json
+key.json
 
 # 编辑器 / 系统
 .vscode/*

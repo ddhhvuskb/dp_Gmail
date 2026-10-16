@@ -44,10 +44,14 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | P0-04d | `commands::sync_folder` | ⛔ | — | **依赖 P0-07 凭证存储** |
 | P0-05 | 账户配置界面 | ⛔ | `tsc --noEmit` | **依赖 P0-07（密码无处可去）** |
 | P0-06 | 邮件列表 + 详情（虚拟滚动，HTML 净化） | ⬜ | `tsc --noEmit` | 详情缺一条取正文的命令，待决策 |
-| P0-07 | 凭证加密 AES-256-GCM + 密钥文件管理 | ⬜ | `cargo test` + **人工确认** | — |
+| P0-07a | `security/keyfile.rs` 密钥文件管理 | ✅ | `cargo test --test keyfile_test` | **8/8** |
+| P0-07b | `security/credentials.rs` AES-256-GCM | ✅ | `cargo test --test credentials_test` | **8/8** |
+| P0-07c | 密文接入存储（schema 变更） | ⛔ | — | **待用户确认表结构** |
+| P0-07d | `commands::add_account`（原 P0-04） | ⛔ | — | 待 P0-07c |
+| P0-07e | `commands::sync_folder`（原 P0-04d） | ⛔ | — | 待 P0-07c |
 | P0-08 | CI 构建 Windows x64 + ARM64 | ⬜ | workflow 语法校验 | — |
 
-### 累计测试：**53 全绿**
+### 累计测试：**69 全绿**
 
 | 测试目标 | 用例数 |
 | --- | --- |
@@ -60,6 +64,8 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | `message_store_test` | 7 |
 | `list_messages_test` | 6 |
 | `commands_test` | 4 |
+| `keyfile_test` | 8 |
+| `credentials_test` | 8 |
 
 ---
 
@@ -83,6 +89,9 @@ src-tauri/
     │   ├── imap_client.rs   connect_and_login（TLS + 30s）
     │   └── parser.rs        parse_message
     ├── security/
+    │   ├── error.rs         SecurityError
+    │   ├── keyfile.rs       load_or_create_key（版本化 JSON）
+    │   ├── credentials.rs   encrypt_secret / decrypt_secret（AES-256-GCM）
     │   └── sanitize.rs      sanitize_html
     └── storage/
         ├── error.rs         StorageError
@@ -115,21 +124,22 @@ src/main.tsx  src/App.tsx  src/vite-env.d.ts
 
 | 事项 | 状态 |
 | --- | --- |
-| **P0-07 加密方案需人工确认**（密钥文件位置、格式、是否口令保护） | ⛔ **当前关键路径**：卡住 P0-04d / P0-05 |
-| **P0-06 详情缺取正文的命令**（新增接口需确认） | ⏳ 待决策 |
+| **密文落到哪张表/哪一列**（= 数据库表结构变更） | ⛔ **当前关键路径**：卡住 P0-07c/d/e 与 P0-05 |
+| **P0-06 详情缺取正文的命令**（新增接口） | ⏳ 待决策（已有推荐方案 `get_message`） |
 | ADR-0001 §5 依赖增删项（删 keyring/argon2/hkdf；增 ammonia 等） | ⏳ 待过目 |
 | QQ 授权码（P0-01 真机联调） | ⏳ 用户稍后提供 |
-| 应用图标 | ⚠️ 我用 System.Drawing 生成的临时信封图标，可随时替换 |
+| 应用图标 | ⚠️ 临时信封图标，可随时替换 |
 
 ### 依赖关系图（P0）
 
 ```
 P0-01 ─┐
-P0-02 ─┼─→ P0-03 ─→ P0-04b/c ─→ P0-06 ─→ (需新增取正文命令)
-P0-04a ┘                │
-                        └─→ P0-04d sync_folder ─┐
-                                                 ├─→ 都要 P0-07 的凭证存储
-P0-05 账户配置界面 ──────────────────────────────┘
+P0-02 ─┼─→ P0-03 ─→ P0-04b/c(get_messages) ─→ P0-06 ─→ (需新增 get_message 命令)
+P0-04a ┘                                        ▲
+                                                 │ 仍可先做列表+虚拟滚动
+P0-07a ─→ P0-07b ─→ P0-07c ─┬─→ P0-07d add_account ─┐
+   ✅        ✅      ⛔schema └─→ P0-07e sync_folder ─┼─→ P0-05 账户配置界面
+                                                      ┘
 ```
 
 ---

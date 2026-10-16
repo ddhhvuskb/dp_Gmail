@@ -34,6 +34,13 @@ ammonia = "4"
 # SQLite。bundled 在本地编译 SQLite，FTS5 默认已启用（P1 用），无需额外 crate。
 # 禁止用 ORM（DESIGN.md P0-03 约束），一律手写 SQL + 事务。
 rusqlite = { version = "0.40", features = ["bundled"] }
+# 凭证加密（P0-07）。方案见 docs/adr/ADR-0002。
+# 禁止 ECB；禁止硬编码密钥（AGENTS.md 禁止项）。
+aes-gcm = "0.11"
+# 密钥材料用后清零，避免残留内存。
+zeroize = { version = "1", features = ["derive"] }
+# 密钥文件（版本化 JSON）的 base64 编解码。async-imap 已传递依赖此版本。
+base64 = "0.23"
 futures = "0.3"
 thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "io-util"] }
