@@ -153,6 +153,7 @@ P0-05 落地后它已不成立，容易误导使用者。已改为「先在左�
 | `unified_inbox_test` | 13 |
 | `performance_test` | 7 |
 | `smtp_send_test` | 19 |
+| `provider_163_test` | 6 |
 | `compose_test` | 11 |
 | `message_detail_test` | 5 |
 | `list_accounts_test` | 5 |
@@ -229,13 +230,13 @@ src/
 | P1-02 | **多账户 + 统一收件箱**（`list_folders` / `list_unified_messages`） | ✅ 后端 13/13 |
 | P1-03 | **搜索界面 + 统一收件箱界面**（文件夹树 / 搜索框 / ListMode） | ✅ 已实跑验证 |
 | P2-01 | **发信全链路**（后端 + 命令 + 界面 + 附件 + STARTTLS） | ✅ **P2 全部收口** |
-| P3-01 | **国内邮箱兼容层**（地址核实 + 网易 `ID` 命令已实现；企业邮箱方案待决策） | 🟨 见 `P3-01-provider-compat.md` |
+| P3-01 | **国内邮箱兼容层**（163 已入表 + 网易 `ID` 已实现；企业邮箱方案待决策） | 🟨 见 `P3-01-provider-compat.md` |
 | P3-02 | OAuth | ⬜ |
 | P4 | UI 打磨 + 可选 AI 摘要/待办提取 | ⬜ |
 
 ### P1 完成度：**3/3 全部落地**
 
-### 累计测试：**184 全绿**
+### 累计测试：**190 全绿**
 
 ### 依赖记录
 

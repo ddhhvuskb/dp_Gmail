@@ -1,7 +1,9 @@
 //! 服务商配置表。
 //!
 //! 本模块是全项目**唯一**允许出现服务器地址字面量的地方（见 `AGENTS.md` 禁止项）。
-//! P0 阶段只收录 QQ 邮箱；其余国内服务商属 P3 范围，届时在本表追加。
+//!
+//! **收录标准：地址必须来自可核实的公开来源，不得凭记忆填写。**
+//! 每一条的出处记在 `docs/tasks/P3-01-provider-compat.md`。
 
 /// TLS 连接模式。
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -27,17 +29,33 @@ pub struct ProviderConfig {
 }
 
 /// 已收录的服务商。**服务器地址的唯一来源。**
-pub const PROVIDERS: &[ProviderConfig] = &[ProviderConfig {
-    id: "qq",
-    display_name: "QQ邮箱",
-    domains: &["qq.com", "vip.qq.com", "foxmail.com"],
-    imap_host: "imap.qq.com",
-    imap_port: 993,
-    imap_tls: TlsMode::Implicit,
-    smtp_host: "smtp.qq.com",
-    smtp_port: 465,
-    smtp_tls: TlsMode::Implicit,
-}];
+///
+/// 每条地址的核实来源见 `docs/tasks/P3-01-provider-compat.md` §2。
+/// 未核实的服务商**不得**加入本表 —— 填错一个主机名会让用户以为是自己密码错了。
+pub const PROVIDERS: &[ProviderConfig] = &[
+    ProviderConfig {
+        id: "qq",
+        display_name: "QQ邮箱",
+        domains: &["qq.com", "vip.qq.com", "foxmail.com"],
+        imap_host: "imap.qq.com",
+        imap_port: 993,
+        imap_tls: TlsMode::Implicit,
+        smtp_host: "smtp.qq.com",
+        smtp_port: 465,
+        smtp_tls: TlsMode::Implicit,
+    },
+    ProviderConfig {
+        id: "netease163",
+        display_name: "网易163邮箱",
+        domains: &["163.com"],
+        imap_host: "imap.163.com",
+        imap_port: 993,
+        imap_tls: TlsMode::Implicit,
+        smtp_host: "smtp.163.com",
+        smtp_port: 465,
+        smtp_tls: TlsMode::Implicit,
+    },
+];
 
 /// 由邮箱地址解析服务商配置。
 ///

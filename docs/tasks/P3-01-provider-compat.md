@@ -22,7 +22,7 @@
 | 服务商 | IMAP | SMTP | 来源 |
 | --- | --- | --- | --- |
 | QQ 邮箱 | `imap.qq.com:993` | `smtp.qq.com:465` | QQ 官方帮助页（P0-01 已核实） |
-| 网易 163 | `imap.163.com:993` | `smtp.163.com:465` | [Zoho 汇总表](https://zdblogs.zoho.com.cn/mail/articles/pop513.html) |
+| 网易 163 个人邮箱 | `imap.163.com:993` | `smtp.163.com:465` | [Zoho 汇总表](https://zdblogs.zoho.com.cn/mail/articles/pop513.html) ✅ **已加入服务商表** |
 
 ### 2.2 企业邮箱（**无法**用域名自动识别，见 §4）
 
@@ -168,7 +168,7 @@ pub fn resolve_by_email(email: &str) -> Option<&'static ProviderConfig> {
 
 | 项 | 状态 |
 | --- | --- |
-| 免费个人邮箱地址核实 | 🟨 163 已核实；126 / yeah.net / sina.com / 139 / 189 未找到权威来源 |
+| 免费个人邮箱地址核实 | 🟨 163 **已加入服务商表**；126 / yeah.net / sina.com / 139 / 189 未找到权威来源 |
 | 网易 IMAP `ID` 命令支持 | ✅ 已实现（见 §3），**真机未验证** |
 | 企业邮箱的手动选择 UI | ⬜ 待方案确定 |
 | OAuth（P3 后半） | ⬜ 未开始 |
