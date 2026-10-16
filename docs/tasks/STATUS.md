@@ -68,6 +68,7 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 ## 端到端实跑验证（2026-10-16）
 
 用 `npm run tauri dev` 真实启动过一次应用，证据如下。
+截图存档：`docs/verification/p0-app-running.png`。
 
 ### 应用启动
 
