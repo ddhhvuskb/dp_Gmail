@@ -60,7 +60,59 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | 阶段 | 状态 |
 | --- | --- |
 | P0-01 ~ P0-08 | ✅ 全部完成 |
-| **仍未验证的总项** | 界面从未在真实 Tauri 窗口跑过；`fetch_recent` 未真机联调；ARM64 构建未本地验证 |
+| **已解除的验证缺口** | ~~界面从未在真实窗口跑过~~ → 2026-10-16 已实跑，见下 |
+| **仍未验证** | `fetch_recent` 未真机联调（需 QQ 授权码）；ARM64 构建仅在 CI 首次运行时验证 |
+
+---
+
+## 端到端实跑验证（2026-10-16）
+
+用 `npm run tauri dev` 真实启动过一次应用，证据如下。
+
+### 应用启动
+
+- 进程 `dp-gmail.exe`，主窗口标题 **`dp_Gmail`**，占用 33 MB。
+- 三栏界面完整渲染：侧栏「添加账户 / 已配置账户 / 同步」、中栏列表占位、右栏详情占位。
+- 提交按钮在服务商识别成功前正确保持禁用（截图确认）。
+
+### 数据目录与密钥文件
+
+应用 `setup` 阶段在 `%APPDATA%\com.dpgmail.desktop\` 下创建了：
+
+| 文件 | 说明 |
+| --- | --- |
+| `dp_gmail.sqlite` | 4096 B |
+| `dp_gmail.sqlite-wal` / `-shm` | **WAL 生效的直接证据** |
+| `key.json` | 133 B，内容 `{version:1, algorithm:"AES-256-GCM", key:"<base64 32B>", created_at}` |
+
+### 库结构（只读查询运行中的库）
+
+```
+user_version = 2
+表: accounts, attachments, folders, messages
+accounts 列: id, email, display_name, provider_id, created_at, secret_encrypted
+索引: idx_attachments_message, idx_messages_folder_date
+自动唯一索引: sqlite_autoindex_accounts_1, sqlite_autoindex_folders_1, sqlite_autoindex_messages_1
+```
+
+三个自动唯一索引正好对应 `accounts.email`、`folders(account_id,name)`、`messages(folder_id,uid)`，
+即 `DESIGN.md` 要求的「联合唯一索引 / UID 去重」。
+
+### IPC 往返已验证
+
+启动即触发 `useAccounts` → `list_accounts`。
+界面显示的是**空列表文案**（「还没有账户。用上面的表单添加一个。」），
+而不是 `App.tsx` 里 `accounts.isError` 分支的红色错误 ——
+说明该命令**成功返回了空数组**。
+
+这一次往返同时证明了：命令已注册、capabilities 未拦截自定义命令、
+camelCase 参数解析正确、`AccountView` 序列化正常。
+
+### 本次发现并修正
+
+界面里残留了一句过期文案「账户添加界面属 P0-05，尚未实现」——
+P0-05 落地后它已不成立，容易误导使用者。已改为「先在左侧「添加账户」里配置一个邮箱」。
+这正是只有把界面真跑起来才会暴露的问题。
 
 | 测试目标 | 用例数 |
 | --- | --- |
@@ -200,3 +252,4 @@ P0-08 CI（无依赖，可随时做）
 | 2026-10-16 | **P0-06 完成**：`get_message` + `list_accounts` 命令；前端三栏界面、虚拟滚动列表、净化后渲染详情 |
 | 2026-10-16 | **P0-05 完成**：`resolve_provider` 命令（用户批准）+ 账户表单/列表，实时识别、密码即时清空 |
 | 2026-10-16 | **P0-08 完成**：CI 工作流（矩阵 x64/ARM64）；`cargo clippy -D warnings` 本地通过；x64 release 构建实跑 |
+| 2026-10-16 | **端到端实跑验证**：真实窗口启动、WAL 生效、密钥文件生成、库结构正确、`list_accounts` IPC 往返成功；修掉一处过期 UI 文案 |

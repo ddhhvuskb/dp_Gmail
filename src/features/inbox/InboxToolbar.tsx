@@ -79,7 +79,7 @@ export default function InboxToolbar({ accounts }: Props) {
         </p>
       )}
       {accounts.length === 0 && (
-        <p className="toolbar__hint">还没有账户。账户添加界面属 P0-05，尚未实现。</p>
+        <p className="toolbar__hint">先在左侧「添加账户」里配置一个邮箱。</p>
       )}
     </div>
   );
