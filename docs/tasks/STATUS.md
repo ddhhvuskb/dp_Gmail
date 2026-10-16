@@ -46,12 +46,12 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | P0-06 | 邮件列表 + 详情（虚拟滚动，HTML 净化） | ⬜ | `tsc --noEmit` | 详情缺一条取正文的命令，待决策 |
 | P0-07a | `security/keyfile.rs` 密钥文件管理 | ✅ | `cargo test --test keyfile_test` | **8/8** |
 | P0-07b | `security/credentials.rs` AES-256-GCM | ✅ | `cargo test --test credentials_test` | **8/8** |
-| P0-07c | 密文接入存储（schema 变更） | ⛔ | — | **待用户确认表结构** |
-| P0-07d | `commands::add_account`（原 P0-04） | ⛔ | — | 待 P0-07c |
-| P0-07e | `commands::sync_folder`（原 P0-04d） | ⛔ | — | 待 P0-07c |
+| P0-07c | `accounts.secret_encrypted` + schema 迁移 + 账户读写 | ✅ | `cargo test --test schema_migration_test`、`account_store_test` | **5/5 + 6/6** |
+| P0-07d | `commands::add_account`（原 P0-04） | ⬜ | `cargo check` | — |
+| P0-07e | `commands::sync_folder`（原 P0-04d） | ⬜ | `cargo check` | — |
 | P0-08 | CI 构建 Windows x64 + ARM64 | ⬜ | workflow 语法校验 | — |
 
-### 累计测试：**69 全绿**
+### 累计测试：**80 全绿**
 
 | 测试目标 | 用例数 |
 | --- | --- |
@@ -66,6 +66,8 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | `commands_test` | 4 |
 | `keyfile_test` | 8 |
 | `credentials_test` | 8 |
+| `schema_migration_test` | 5 |
+| `account_store_test` | 6 |
 
 ---
 
@@ -95,7 +97,8 @@ src-tauri/
     │   └── sanitize.rs      sanitize_html
     └── storage/
         ├── error.rs         StorageError
-        ├── schema.rs        init_schema
+        ├── schema.rs        init_schema / SCHEMA_VERSION（user_version 迁移）
+        ├── account_store.rs create_account / load_encrypted_secret
         ├── message_store.rs upsert_message / list_messages
         └── mod.rs           open_database
 ```
@@ -124,8 +127,7 @@ src/main.tsx  src/App.tsx  src/vite-env.d.ts
 
 | 事项 | 状态 |
 | --- | --- |
-| **密文落到哪张表/哪一列**（= 数据库表结构变更） | ⛔ **当前关键路径**：卡住 P0-07c/d/e 与 P0-05 |
-| **P0-06 详情缺取正文的命令**（新增接口） | ⏳ 待决策（已有推荐方案 `get_message`） |
+| P0-06 取正文的 `get_message` 命令 | ✅ 用户已批准（待实现） |
 | ADR-0001 §5 依赖增删项（删 keyring/argon2/hkdf；增 ammonia 等） | ⏳ 待过目 |
 | QQ 授权码（P0-01 真机联调） | ⏳ 用户稍后提供 |
 | 应用图标 | ⚠️ 临时信封图标，可随时替换 |
@@ -133,13 +135,14 @@ src/main.tsx  src/App.tsx  src/vite-env.d.ts
 ### 依赖关系图（P0）
 
 ```
-P0-01 ─┐
-P0-02 ─┼─→ P0-03 ─→ P0-04b/c(get_messages) ─→ P0-06 ─→ (需新增 get_message 命令)
-P0-04a ┘                                        ▲
-                                                 │ 仍可先做列表+虚拟滚动
-P0-07a ─→ P0-07b ─→ P0-07c ─┬─→ P0-07d add_account ─┐
-   ✅        ✅      ⛔schema └─→ P0-07e sync_folder ─┼─→ P0-05 账户配置界面
-                                                      ┘
+P0-01 ✅ ─┐
+P0-02 ✅ ─┼─→ P0-03 ✅ ─→ P0-04a/b ✅ ─→ P0-04c get_messages ✅
+          │                                   │
+          │                                   ├─→ get_message（已批准，待实现）─→ P0-06
+          │                                   │
+P0-07a/b ✅ ─→ P0-07c ✅ ─┬─→ P0-07d add_account ─→ P0-05 账户配置界面
+                          └─→ P0-07e sync_folder
+P0-08 CI（无依赖，可随时做）
 ```
 
 ---

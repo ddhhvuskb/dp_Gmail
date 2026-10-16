@@ -21,9 +21,9 @@
 | --- | --- | --- |
 | P0-07a | `security/keyfile.rs` 密钥文件的生成 / 读取 / 校验 | ✅ |
 | P0-07b | `security/credentials.rs` AES-256-GCM 加解密 | ✅ |
-| P0-07c | 把密文接进存储（`accounts` 加列 or 新建表） | ⛔ **待 schema 决策** |
-| P0-07d | `commands::add_account` 命令（P0-04 并入） | ⛔ 待 P0-07c |
-| P0-07e | `commands::sync_folder` 命令（P0-04d） | ⛔ 待 P0-07c |
+| P0-07c | `accounts.secret_encrypted` 列 + schema 版本迁移 + 账户读写 | ✅ |
+| P0-07d | `commands::add_account` 命令（P0-04 并入） | ⬜ |
+| P0-07e | `commands::sync_folder` 命令（P0-04d） | ⬜ |
 
 ---
 
@@ -83,12 +83,77 @@ pub fn decrypt_secret(blob: &[u8], key: &[u8; KEY_LEN]) -> Result<String, Securi
 
 ---
 
-## 6. 待决策：密文落到哪里
+## 6. 密文落地：`accounts.secret_encrypted`（用户 2026-10-16 确认）
 
-`DESIGN.md` P0-03 的表清单是 `accounts / folders / messages / attachments`，
-**既没有凭证列也没有凭证表**。
+用户选定：**`accounts` 加一列 `secret_encrypted BLOB`**，表数保持 P0-03 的四张。
 
-把密文加进 `accounts`（如 `secret_encrypted BLOB`）属于**变更数据库表结构**，
-按第六章与 ADR-0002 §7，同样必须先经用户确认。
+### 6.1 schema 版本机制
 
-**已提交用户，未获答复前不动 schema。** 这也是 P0-07c/d/e 与 P0-05 的共同前置。
+原 `init_schema` 只有 `CREATE TABLE IF NOT EXISTS`，**对已存在的库不会补列**。
+因此引入 SQLite 内建的 `PRAGMA user_version`：
+
+| 版本 | 内容 |
+| --- | --- |
+| 1 | P0-03 的初始四表 |
+| 2 | P0-07，`accounts` 增加 `secret_encrypted` |
+
+`init_schema` 的判定顺序：
+
+1. **建表前**探测 `accounts` 是否已存在，据此区分"全新库"与"历史库"；
+2. 执行 `SCHEMA_SQL`（全新库的 `CREATE TABLE` 已含新列）；
+3. 全新库起点直接算作最新版，**跳过全部迁移** —— 否则会对刚建好的表重复 `ALTER TABLE` 而报"列已存在"；
+4. 历史库按 `user_version` 逐个跑 `MIGRATIONS` 里版本号大于当前的语句；
+5. 盖上 `SCHEMA_VERSION`。
+
+### 6.2 接口
+
+```rust
+// storage/account_store.rs
+/// `secret_encrypted` 必须是 AES-256-GCM 密文，不是明文。
+pub fn create_account(
+    conn: &Connection,
+    email: &str,
+    display_name: Option<&str>,
+    provider_id: &str,
+    secret_encrypted: Option<&[u8]>,
+) -> Result<i64, StorageError>;
+
+/// 账户不存在或未设凭证都返回 None。
+pub fn load_encrypted_secret(
+    conn: &Connection,
+    account_id: i64,
+) -> Result<Option<Vec<u8>>, StorageError>;
+```
+
+---
+
+## 7. 验收结果（P0-07c）
+
+| 检查项 | 实测 |
+| --- | --- |
+| `cargo check --all-targets` | exit 0，零警告 ✅ |
+| `cargo test --test schema_migration_test` | **5/5 通过** ✅ |
+| `cargo test --test account_store_test` | **6/6 通过** ✅ |
+
+### 7.1 迁移机制已被测试固化
+
+| 性质 | 用例 |
+| --- | --- |
+| 全新库被盖上当前版本号 | `fresh_database_is_stamped_with_current_version` |
+| 全新库直接就有 `secret_encrypted` | `fresh_database_has_encrypted_secret_column` |
+| 旧库被补上新列，且其余缺失的表也补齐 | `migrates_legacy_database_missing_the_column` |
+| 迁移可重复执行（不会重复 `ALTER`） | `migration_is_idempotent` |
+| **迁移不丢老数据**，老行新列为 NULL | `preserves_legacy_rows_during_migration` |
+
+### 7.2 安全性质已被测试固化
+
+| 性质 | 用例 |
+| --- | --- |
+| 加密 → 落库 → 读回 → 解密 全链路还原 | `encrypted_secret_round_trips_through_the_database` |
+| **逐列扫描整行，明文密码不出现在任何列** | `stored_blob_is_not_the_plaintext` |
+| 换密钥解不开库里存的密文 | `wrong_key_cannot_open_stored_secret` |
+| 重复邮箱被 `UNIQUE` 拒绝 | `rejects_duplicate_email` |
+
+> 写 `stored_blob_is_not_the_plaintext` 时踩了一个坑：一开始把每列都按 `Vec<u8>` 读，
+> 撞上 `InvalidColumnType(0, "id", Integer)`。必须按 `rusqlite::types::Value` 分类型取字节，
+> 否则 INTEGER/TEXT 列根本读不出来，测试会以假阳性通过。

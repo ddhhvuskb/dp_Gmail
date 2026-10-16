@@ -7,13 +7,15 @@ use std::path::Path;
 
 use rusqlite::Connection;
 
+pub mod account_store;
 pub mod error;
 pub mod message_store;
 pub mod schema;
 
+pub use account_store::{create_account, load_encrypted_secret};
 pub use error::StorageError;
 pub use message_store::{list_messages, upsert_message, MessageSummary, NewAttachment, NewMessage};
-pub use schema::init_schema;
+pub use schema::{init_schema, SCHEMA_VERSION};
 
 /// 打开（或创建）数据库文件，设好连接级 PRAGMA，并确保表结构就绪。
 ///
