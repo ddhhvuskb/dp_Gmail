@@ -1,6 +1,6 @@
 /** 收件箱的数据访问 hooks。 */
 
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { api } from "../../lib/api";
 import type { ListMode } from "../../stores/selection";
@@ -39,20 +39,27 @@ export function useFolders(accountId: number | null) {
  * 按当前列表模式取数据，并把三种来源归一成 `ListRow[]`。
  *
  * 归一放在这里而不是三个组件里各写一遍 —— 三处重复迟早会漂移。
+ *
+ * **用无限查询而非单页查询。** 以前只请求 `offset = 0` 一页，于是 200 这个
+ * 「单次请求上限」事实上退化成了「产品功能上限」：900 封的文件夹只能看到
+ * 最新 200 封，其余在界面上不可达。实测证明渲染能力根本不是瓶颈
+ * （1200 行滚动零掉帧），卡住可达性的只有那个上限本身。
+ * 见 `docs/tasks/perf-verification.md` §6.3。
  */
 export function useListRows(mode: ListMode, accountId: number | null) {
-  return useQuery({
+  return useInfiniteQuery({
     // mode 是判别联合，可直接进 queryKey；换了模式自然换缓存
     queryKey: ["list", mode, accountId],
     enabled: mode.kind !== "none",
-    queryFn: async (): Promise<ListRow[]> => {
+    initialPageParam: 0,
+    queryFn: async ({ pageParam }): Promise<ListRow[]> => {
       switch (mode.kind) {
         case "folder": {
-          const rows = await api.getMessages(mode.folderId, PAGE_SIZE, 0);
+          const rows = await api.getMessages(mode.folderId, PAGE_SIZE, pageParam);
           return rows.map((row) => ({ ...row }));
         }
         case "unified": {
-          const rows = await api.listUnifiedMessages(accountId, "INBOX", PAGE_SIZE, 0);
+          const rows = await api.listUnifiedMessages(accountId, "INBOX", PAGE_SIZE, pageParam);
           return rows.map((row) => ({
             id: row.id,
             subject: row.subject,
@@ -71,6 +78,14 @@ export function useListRows(mode: ListMode, accountId: number | null) {
         default:
           return [];
       }
+    },
+    getNextPageParam: (lastPage, _pages, lastPageParam) => {
+      // 搜索结果的后端接口不收 offset，恒为单页
+      if (mode.kind === "search") {
+        return undefined;
+      }
+      // 满页才可能还有下一页；不满页说明到底了
+      return lastPage.length < PAGE_SIZE ? undefined : lastPageParam + PAGE_SIZE;
     },
   });
 }

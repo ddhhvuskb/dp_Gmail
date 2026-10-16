@@ -118,8 +118,7 @@ export const api = {
     }),
 
   /** `accountId` 传 `null` 即列出全部账户的文件夹。 */
-  listFolders: (accountId: number | null) =>
-    invoke<FolderRecord[]>("list_folders", { accountId }),
+  listFolders: (accountId: number | null) => invoke<FolderRecord[]>("list_folders", { accountId }),
 
   getMessages: (folderId: number, limit: number, offset: number) =>
     invoke<MessageSummary[]>("get_messages", { folderId, limit, offset }),

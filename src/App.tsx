@@ -2,6 +2,8 @@
  * 应用外壳：侧栏（账户配置 + 同步 + 文件夹树）+ 邮件列表 + 详情 + 写信面板。
  */
 
+import { useCallback, useMemo } from "react";
+
 import AccountForm from "./features/accounts/AccountForm";
 import AccountList from "./features/accounts/AccountList";
 import ComposeForm from "./features/compose/ComposeForm";
@@ -57,6 +59,16 @@ export default function App() {
   const rows = useListRows(mode, accountId);
   const message = useMessage(messageId);
 
+  // 无限查询把结果按页放在 pages 里，这里摊平成一个数组交给列表渲染
+  const rowList = useMemo(() => rows.data?.pages.flat() ?? [], [rows.data]);
+
+  // 列表只负责喊「快到底了」；该不该真去取下一页由这里判断
+  const loadMore = useCallback(() => {
+    if (rows.hasNextPage && !rows.isFetchingNextPage) {
+      void rows.fetchNextPage();
+    }
+  }, [rows.hasNextPage, rows.isFetchingNextPage, rows.fetchNextPage]);
+
   const accountOptions = (accounts.data ?? []).map((account) => ({
     id: account.id,
     label: account.display_name ?? account.email,
@@ -92,11 +104,16 @@ export default function App() {
         {mode.kind === "none" && <p className="app__hint">同步一个文件夹，或点「统一收件箱」。</p>}
         {mode.kind !== "none" && rows.isPending && <p className="app__hint">读取邮件…</p>}
         {rows.isError && <p className="app__error">{String(rows.error)}</p>}
-        {mode.kind !== "none" && rows.data?.length === 0 && (
+        {mode.kind !== "none" && rows.isSuccess && rowList.length === 0 && (
           <p className="app__hint">{emptyHint(mode)}</p>
         )}
-        {rows.data && rows.data.length > 0 && (
-          <MessageList rows={rows.data} selectedId={messageId} onSelect={selectMessage} />
+        {rowList.length > 0 && (
+          <MessageList
+            rows={rowList}
+            selectedId={messageId}
+            onSelect={selectMessage}
+            onLoadMore={loadMore}
+          />
         )}
       </section>
 

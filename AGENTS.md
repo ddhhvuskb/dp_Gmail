@@ -109,7 +109,7 @@
 | ~~`send_client_id_if_supported`~~ | ✅ 2026-10-17 已真实执行（QQ 的 `CAPABILITY` 确含 `ID`） |
 | 网易 `ID` 命令参数格式 | ⛔ 仍未在真实 163 账户上试过 —— 本次只有 QQ 账号（QQ 对 `ID` 不敏感） |
 | ~~滚动帧率~~ | ✅ 2026-10-17 **已实测**：1200 封全列表滚动 200 帧，无一帧超 16.7 ms。见 `docs/tasks/perf-verification.md` §6 |
-| **列表硬顶 200 条且无翻页** | ⛔ 900 封的文件夹只能看到最新 200 封。**渲染能力不是瓶颈**（1200 行实测无压力），卡住的是上限本身 |
+| ~~列表硬顶 200 条且无翻页~~ | ✅ 2026-10-17 **已修**：改为按 200 一页增量加载，900 封全部可达；边翻页边滚动 400 帧零掉帧。见 `docs/tasks/perf-verification.md` §6.5 |
 | ARM64 构建 | ⛔ 仅 CI 首次运行时验证 |
 
 **硬性要求：每完成一个任务，必须在任务文档的「尚未验证」小节里如实写明边界。**
@@ -194,8 +194,10 @@ PowerShell 5.1 的控制台以 GBK 解码，**读取 UTF-8 文件时中文必然
 ## 验证命令
 
 ```bash
-cargo check --manifest-path src-tauri/Cargo.toml   # 后端
-npx tsc --noEmit                                   # 前端
-cargo fmt --check                                  # Rust 格式
-cargo test --manifest-path src-tauri/Cargo.toml    # 单测
+cargo check --manifest-path src-tauri/Cargo.toml    # 后端
+cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+npx tsc --noEmit                                    # 前端类型
+npx prettier --check "src/**/*.{ts,tsx}"            # 前端格式
+cargo fmt --check                                   # Rust 格式
+cargo test --manifest-path src-tauri/Cargo.toml     # 单测
 ```

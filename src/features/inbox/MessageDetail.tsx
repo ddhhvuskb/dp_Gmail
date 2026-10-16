@@ -46,7 +46,10 @@ export default function MessageDetail({ message }: Props) {
 
       {message.html_body ? (
         // 后端已净化；见文件头注释。
-        <div className="message-detail__body" dangerouslySetInnerHTML={{ __html: message.html_body }} />
+        <div
+          className="message-detail__body"
+          dangerouslySetInnerHTML={{ __html: message.html_body }}
+        />
       ) : (
         <pre className="message-detail__body message-detail__body--text">
           {message.text_body ?? "(无正文)"}

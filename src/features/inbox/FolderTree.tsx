@@ -46,8 +46,7 @@ export default function FolderTree({ folders, accounts }: Props) {
       {[...grouped.entries()].map(([accountId, bucket]) => (
         <div key={accountId} className="folder-tree__group">
           <p className="folder-tree__account">
-            {accounts.find((account) => account.id === accountId)?.label ??
-              `账户 ${accountId}`}
+            {accounts.find((account) => account.id === accountId)?.label ?? `账户 ${accountId}`}
           </p>
           {bucket.map((folder) => {
             const active = mode.kind === "folder" && mode.folderId === folder.id;

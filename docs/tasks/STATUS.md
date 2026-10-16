@@ -63,7 +63,7 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | **已解除的验证缺口** | ~~界面从未在真实窗口跑过~~ → 2026-10-16 已实跑，见下 |
 | **连接层已真实验证** | ✅ 2026-10-16：IMAP 993 / IMAP+STARTTLS 143 / SMTP 465 / SMTP+STARTTLS 587 四条路径都连上了真实服务器并收到协议层拒绝，见 `live-network-verification.md` |
 | **已真机跑通** | ✅ 2026-10-17：`fetch_recent` 真收信（4 封）、`send_mail` 真发信（自寄闭环）、`send_client_id_if_supported` 真实执行。见 `live-account-verification.md` |
-| **仍未验证** | 网易 `ID` 命令（本次只有 QQ 账号）；列表硬顶 200 条且无翻页（见 `perf-verification.md` §6.3）；ARM64 构建仅在 CI 首次运行时验证 |
+| **仍未验证** | 网易 `ID` 命令（本次只有 QQ 账号）；ARM64 构建仅在 CI 首次运行时验证 |
 
 ### 已关掉的欠账
 
@@ -75,7 +75,7 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | ~~界面只在空库上跑过~~ | ✅ **已用 1260 封仿真数据实跑**，见 `real-data-verification.md` |
 | ~~HTML 净化是否真的拦得住 XSS~~ | ✅ **端到端验证**：`<script>` 被剥除、`onerror` 未执行 |
 | ~~滚动帧率（前端侧）~~ | ✅ **已实测**：1200 封全列表滚动 200 帧，无一帧超 16.7 ms；挂载行数恒定 24，DOM 节点顶/底 249/251。见 `perf-verification.md` §6 |
-| **列表硬顶在 200 条且无翻页** | ⛔ **新发现的功能缺口**：900 封的文件夹只能看到最新 200 封，其余在界面上不可达。渲染能力不是瓶颈（放宽到 1200 行毫无压力），卡住可达性的只有那个上限。见 `perf-verification.md` §6.3 |
+| ~~列表硬顶在 200 条且无翻页~~ | ✅ **2026-10-17 已修并复验**：改为按 200 一页增量加载，900 封实测全部可达（200→400→600→800→900）；**边翻页边滚动 400 帧零掉帧**。见 `perf-verification.md` §6.5 |
 | ~~搜索 / 统一收件箱的界面操作~~ | ✅ **均已实跑验证**：搜索链路见下；统一收件箱见 `p1-unified-inbox.png` |
 | ~~空结果提示~~ | ✅ **已实跑验证**：搜索无结果时显示「没有匹配「…」的邮件。」，不再是空白 |
 | ~~IMAP / SMTP 连接层零真实执行~~ | ✅ **已真实跑通**：4 条建连路径（含两条 STARTTLS 升级）连上 QQ / 163 真实服务器并收到协议层拒绝，见 `live-network-verification.md` |
@@ -87,9 +87,6 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 >
 > ⚠️ **网络侧现在只剩一格没关**：网易 `ID` 命令仍未经真实 163 账户验证。
 > 连接层、收信、发信、投递、解析**均已真机跑通**。见 `live-account-verification.md`。
->
-> ⚠️ **另有一处与网络无关的功能缺口**：列表硬顶 200 条且无翻页，
-> 900 封的文件夹只能看到最新 200 封。见 `perf-verification.md` §6.3。
 
 #### 统一收件箱实跑记录（2026-10-16）
 
@@ -376,3 +373,5 @@ P0-08 CI（无依赖，可随时做）
 | 2026-10-17 | **但同一次补测发现功能缺口**：列表 `PAGE_SIZE` / `MAX_PAGE_SIZE` 均为 200 且**无翻页**，900 封的文件夹只能看到最新 200 封。放宽到 1200 行实测毫无压力 ⇒ 卡住可达性的只有上限本身。见 `perf-verification.md` §6.3 |
 | 2026-10-17 | 🎉 **用户提供真实授权码，真机收发验证通过**：`fetch_recent` 真收信 4 封；`send_mail` 真发一封带 HTML + 附件的邮件给自己，约 40 秒后收到；`send_client_id_if_supported` 首次真实执行。**「客户端从未收发过一封真实邮件」就此作废**。凭证只走环境变量，提交历史已核查无泄漏。见 `live-account-verification.md` |
 | 2026-10-17 | **真实数据撞出并修掉一处解析缺陷**：31 封真实邮件里 2 封的 `From` 头只有显示名、没有地址（真实地址在 `Sender`），解析后发件人为空。`parser.rs` 新增 `resolve_from()` 回退到 `Sender` 并保留 `From` 显示名；复验后缺字段从 3 处降到 1 处（剩下那处是「无 `Date` 头」，属已记录的有意处理） |
+| 2026-10-17 | **修掉列表 200 条硬顶（分页）**：`useListRows` 改 `useInfiniteQuery`，`MessageList` 增 `onLoadMore` 触底信号，`App` 摊平 `pages` 并守住 `fetchNextPage`。**未新增任何依赖**。实测 900 封全部可达，边翻页边滚动 400 帧零掉帧。见 `perf-verification.md` §6.5 |
+| 2026-10-17 | **顺手清掉 3 处 prettier 违规**：`FolderTree.tsx` / `MessageDetail.tsx` / `lib/api.ts` 此前不满足 prettier 格式（`要求1.txt` §5.4 强制 rustfmt + prettier）。`npx prettier --check "src/**/*.{ts,tsx}"` 现已全绿 |

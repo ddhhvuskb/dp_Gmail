@@ -5,7 +5,7 @@
  * 1000 封邮件时 DOM 节点数保持在几十个（`DESIGN.md` 性能验收标准）。
  */
 
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
 import { formatDateTime, formatSender } from "../../lib/format";
@@ -14,13 +14,23 @@ import type { ListRow } from "./useInbox";
 /** 行高固定，虚拟化才能用常量估算。 */
 const ROW_HEIGHT = 64;
 
+/** 距列表末尾还剩这么多行时，就提前要下一页。 */
+const PREFETCH_ROWS = 8;
+
 interface Props {
   rows: ListRow[];
   selectedId: number | null;
   onSelect: (id: number) => void;
+  /**
+   * 滚到接近末尾时调用。
+   *
+   * **有没有下一页由调用方判断** —— 本组件只发出「快到底了」这个信号。
+   * 否则它就得知道分页游标、请求状态等一堆与渲染无关的东西。
+   */
+  onLoadMore?: () => void;
 }
 
-export default function MessageList({ rows, selectedId, onSelect }: Props) {
+export default function MessageList({ rows, selectedId, onSelect, onLoadMore }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const virtualizer = useVirtualizer({
@@ -30,6 +40,16 @@ export default function MessageList({ rows, selectedId, onSelect }: Props) {
     overscan: 8,
   });
 
+  const virtualRows = virtualizer.getVirtualItems();
+  const lastRow = virtualRows[virtualRows.length - 1];
+  const lastIndex = lastRow ? lastRow.index : -1;
+
+  useEffect(() => {
+    if (onLoadMore && lastIndex >= rows.length - 1 - PREFETCH_ROWS) {
+      onLoadMore();
+    }
+  }, [lastIndex, rows.length, onLoadMore]);
+
   if (rows.length === 0) {
     return <p className="app__hint">这里没有邮件。</p>;
   }
@@ -37,7 +57,7 @@ export default function MessageList({ rows, selectedId, onSelect }: Props) {
   return (
     <div ref={scrollRef} className="message-list" role="listbox" aria-label="邮件列表">
       <div className="message-list__inner" style={{ height: virtualizer.getTotalSize() }}>
-        {virtualizer.getVirtualItems().map((virtualRow) => {
+        {virtualRows.map((virtualRow) => {
           const row = rows[virtualRow.index];
           if (!row) {
             return null;
