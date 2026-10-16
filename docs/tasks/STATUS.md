@@ -152,7 +152,7 @@ P0-05 落地后它已不成立，容易误导使用者。已改为「先在左�
 | `search_store_test` | 12 |
 | `unified_inbox_test` | 13 |
 | `performance_test` | 7 |
-| `smtp_send_test` | 11 |
+| `smtp_send_test` | 18 |
 | `message_detail_test` | 5 |
 | `list_accounts_test` | 5 |
 | `resolve_provider_test` | 5 |
@@ -227,14 +227,14 @@ src/
 | P1-01 | **FTS5 全文检索**（schema v3 + `search_messages`） | ✅ 12/12 + 5/5 |
 | P1-02 | **多账户 + 统一收件箱**（`list_folders` / `list_unified_messages`） | ✅ 后端 13/13 |
 | P1-03 | **搜索界面 + 统一收件箱界面**（文件夹树 / 搜索框 / ListMode） | ✅ 已实跑验证 |
-| P2-01a/b | **`mail/smtp.rs` 发信**（纯文本 + HTML 正文 / 隐式 TLS / 30s） | ✅ 11/11 |
-| P2-01c~f | 附件 / `send_mail` 命令 / 写信界面 / STARTTLS | ⬜ |
+| P2-01a~c | **`mail/smtp.rs` 发信**（纯文本 + HTML 正文 + 附件 / 隐式 TLS / 30s） | ✅ 18/18 |
+| P2-01d~f | `send_mail` 命令 / 写信界面 / STARTTLS | ⬜ |
 | P3 | 国内邮箱兼容层 + OAuth | ⬜ |
 | P4 | UI 打磨 + 可选 AI 摘要/待办提取 | ⬜ |
 
 ### P1 完成度：**3/3 全部落地**
 
-### 累计测试：**161 全绿**
+### 累计测试：**172 全绿**
 
 ### 依赖记录
 

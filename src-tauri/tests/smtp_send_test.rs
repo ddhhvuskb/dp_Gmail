@@ -5,7 +5,7 @@
 
 use dp_gmail::mail::error::MailError;
 use dp_gmail::mail::provider::{ProviderConfig, TlsMode, PROVIDERS};
-use dp_gmail::mail::smtp::{build_message, send_mail, OutgoingMail};
+use dp_gmail::mail::smtp::{build_message, send_mail, OutgoingAttachment, OutgoingMail};
 
 fn draft(from: &str, to: &[&str]) -> OutgoingMail {
     OutgoingMail {
@@ -14,6 +14,7 @@ fn draft(from: &str, to: &[&str]) -> OutgoingMail {
         subject: "测试主题".to_owned(),
         body_text: "测试正文".to_owned(),
         body_html: None,
+        attachments: vec![],
     }
 }
 
@@ -93,6 +94,7 @@ async fn accepts_display_name_form() {
         subject: "x".to_owned(),
         body_text: "y".to_owned(),
         body_html: None,
+        attachments: vec![],
     };
 
     let err = send_mail(&PROVIDERS[0], "zhangsan@qq.com", "secret", &mail)
@@ -130,6 +132,7 @@ fn ascii_draft(html: Option<&str>) -> OutgoingMail {
         subject: "PLAIN-SUBJECT".to_owned(),
         body_text: "PLAIN-BODY-MARKER".to_owned(),
         body_html: html.map(str::to_owned),
+        attachments: vec![],
     }
 }
 
@@ -200,5 +203,113 @@ fn build_message_rejects_bad_sender() {
     assert!(
         matches!(err, MailError::BadAddress(_)),
         "错误类型不符：{err:?}"
+    );
+}
+
+// ── 附件 ────────────────────────────────────────────────────────
+
+fn attachment(filename: &str, content_type: &str) -> OutgoingAttachment {
+    OutgoingAttachment {
+        filename: filename.to_owned(),
+        content_type: content_type.to_owned(),
+        data: b"ATTACHMENT-DATA-MARKER".to_vec(),
+    }
+}
+
+#[test]
+fn attachment_wraps_message_in_multipart_mixed() {
+    let mut mail = ascii_draft(None);
+    mail.attachments = vec![attachment("report.pdf", "application/pdf")];
+
+    let raw = raw_of(&mail);
+    assert!(
+        raw.contains("multipart/mixed"),
+        "有附件时必须用 multipart/mixed 包一层：\n{raw}"
+    );
+    assert!(raw.contains("report.pdf"), "文件名应在报文里");
+    assert!(
+        raw.contains("application/pdf"),
+        "附件的 Content-Type 应被采用"
+    );
+}
+
+#[test]
+fn attachment_body_still_present_alongside_attachment() {
+    let mut mail = ascii_draft(None);
+    mail.attachments = vec![attachment("a.txt", "text/plain")];
+
+    let raw = raw_of(&mail);
+    assert!(
+        raw.contains("PLAIN-BODY-MARKER"),
+        "加了附件也不能把正文弄丢：\n{raw}"
+    );
+}
+
+#[test]
+fn body_part_is_not_marked_as_attachment() {
+    // 正文若用 Attachment::new 构造，会被打上 Content-Disposition: attachment，
+    // 客户端就会把正文当附件显示。这条用例钉住这个坑。
+    let mut mail = ascii_draft(None);
+    mail.attachments = vec![attachment("a.txt", "text/plain")];
+
+    let raw = raw_of(&mail);
+    let disposition_count = raw.matches("Content-Disposition").count();
+    assert_eq!(
+        disposition_count, 1,
+        "只应有一个部分带 Content-Disposition（就是那个附件），实际 {disposition_count} 个：\n{raw}"
+    );
+}
+
+#[test]
+fn html_plus_attachment_nests_alternative_inside_mixed() {
+    let mut mail = ascii_draft(Some("<p>HTML-BODY-MARKER</p>"));
+    mail.attachments = vec![attachment("report.pdf", "application/pdf")];
+
+    let raw = raw_of(&mail);
+    assert!(raw.contains("multipart/mixed"), "外层应是 mixed：\n{raw}");
+    assert!(
+        raw.contains("multipart/alternative"),
+        "正文那一层应是 alternative"
+    );
+    assert!(raw.contains("PLAIN-BODY-MARKER"), "纯文本应保留");
+    assert!(raw.contains("HTML-BODY-MARKER"), "HTML 应保留");
+    assert!(raw.contains("report.pdf"), "附件应保留");
+}
+
+#[test]
+fn supports_multiple_attachments() {
+    let mut mail = ascii_draft(None);
+    mail.attachments = vec![
+        attachment("one.pdf", "application/pdf"),
+        attachment("two.png", "image/png"),
+    ];
+
+    let raw = raw_of(&mail);
+    assert!(raw.contains("one.pdf") && raw.contains("two.png"));
+    assert!(raw.contains("application/pdf") && raw.contains("image/png"));
+}
+
+#[test]
+fn rejects_invalid_attachment_content_type() {
+    let mut mail = ascii_draft(None);
+    mail.attachments = vec![attachment("x.bin", "这不是一个 MIME 类型")];
+
+    let err = build_message(&mail).expect_err("非法 Content-Type 应被拒");
+    assert!(
+        matches!(err, MailError::BadContentType(ref raw) if raw == "这不是一个 MIME 类型"),
+        "错误类型不符：{err:?}"
+    );
+}
+
+#[test]
+fn plain_text_attachment_does_not_force_html() {
+    // 纯文本邮件加纯文本附件，不应因此产生 multipart/alternative
+    let mut mail = ascii_draft(None);
+    mail.attachments = vec![attachment("note.txt", "text/plain")];
+
+    let raw = raw_of(&mail);
+    assert!(
+        !raw.contains("multipart/alternative"),
+        "没有 HTML 正文就不该出现 alternative：\n{raw}"
     );
 }

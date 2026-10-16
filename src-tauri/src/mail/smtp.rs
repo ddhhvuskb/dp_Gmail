@@ -7,7 +7,8 @@
 
 use std::time::Duration;
 
-use lettre::message::{Mailbox, Message, MultiPart};
+use lettre::message::header::ContentType;
+use lettre::message::{Attachment, Mailbox, Message, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
 use lettre::{AsyncSmtpTransport, AsyncTransport, Tokio1Executor};
 
@@ -16,6 +17,15 @@ use super::provider::{ProviderConfig, TlsMode};
 
 /// 发信超时。与 IMAP 保持一致。
 pub const SMTP_TIMEOUT_SECS: u64 = 30;
+
+/// 待发送的附件。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct OutgoingAttachment {
+    pub filename: String,
+    /// 形如 `application/pdf`。
+    pub content_type: String,
+    pub data: Vec<u8>,
+}
 
 /// 待发送的邮件。
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -30,6 +40,7 @@ pub struct OutgoingMail {
     /// 纯文本那一份**不可省**：部分客户端与无障碍工具只读纯文本，
     /// 也影响垃圾邮件评分。
     pub body_html: Option<String>,
+    pub attachments: Vec<OutgoingAttachment>,
 }
 
 /// 经 SMTP 投递一封邮件。
@@ -63,8 +74,13 @@ pub async fn send_mail(
 
 /// 组装 RFC5322 报文。
 ///
-/// 同时有纯文本与 HTML 时用 `multipart/alternative`；只有纯文本时直接单部分，
-/// 不额外套一层 multipart —— 单部分报文兼容性最好，没必要为不存在的第二种格式付代价。
+/// 结构按「最小够用」选择，不无谓套壳：
+///
+/// | 正文 | 附件 | 结构 |
+/// | --- | --- | --- |
+/// | 纯文本 | 无 | 单部分（兼容性最好） |
+/// | 纯文本 + HTML | 无 | `multipart/alternative` |
+/// | 任意 | 有 | `multipart/mixed` 外层，正文按上表再决定内层 |
 ///
 /// 公开此函数是为了让它**可被单测直接验证**：组装结果不依赖网络，
 /// 不该因为 `send_mail` 会建连就连带失去测试覆盖。
@@ -77,14 +93,48 @@ pub fn build_message(mail: &OutgoingMail) -> Result<Message, MailError> {
         builder = builder.to(parse_mailbox(recipient)?);
     }
 
-    match &mail.body_html {
-        Some(html) => {
-            let alternative =
-                MultiPart::alternative_plain_html(mail.body_text.clone(), html.clone());
-            Ok(builder.multipart(alternative)?)
-        }
-        None => Ok(builder.body(mail.body_text.clone())?),
+    if mail.attachments.is_empty() {
+        return match &mail.body_html {
+            Some(html) => {
+                let alternative =
+                    MultiPart::alternative_plain_html(mail.body_text.clone(), html.clone());
+                Ok(builder.multipart(alternative)?)
+            }
+            None => Ok(builder.body(mail.body_text.clone())?),
+        };
     }
+
+    let mut parts = match &mail.body_html {
+        Some(html) => MultiPart::mixed().multipart(MultiPart::alternative_plain_html(
+            mail.body_text.clone(),
+            html.clone(),
+        )),
+        None => MultiPart::mixed().singlepart(plain_text_part(&mail.body_text)),
+    };
+
+    for attachment in &mail.attachments {
+        parts = parts.singlepart(attachment_part(attachment)?);
+    }
+
+    Ok(builder.multipart(parts)?)
+}
+
+/// 正文的纯文本部分。
+///
+/// **不能**用 `Attachment::new`：它会设 `Content-Disposition: attachment`，
+/// 正文会被客户端当成附件显示。
+fn plain_text_part(text: &str) -> SinglePart {
+    SinglePart::builder()
+        .header(ContentType::TEXT_PLAIN)
+        .body(text.to_owned())
+}
+
+/// 把一个附件转成 MIME 部分。
+fn attachment_part(attachment: &OutgoingAttachment) -> Result<SinglePart, MailError> {
+    let content_type = ContentType::parse(&attachment.content_type)
+        .map_err(|_| MailError::BadContentType(attachment.content_type.clone()))?;
+
+    Ok(Attachment::new(attachment.filename.clone()).body(attachment.data.clone(), content_type))
 }
 
 /// 解析 `Name <addr>` 或裸地址。

@@ -13,7 +13,7 @@
 | --- | --- | --- |
 | P2-01a | `mail/smtp.rs`：`send_mail` + `build_message`（纯文本 / 隐式 TLS / 30s） | ✅ |
 | P2-01b | HTML 正文（`multipart/alternative`） | ✅ |
-| P2-01c | 附件（`MultiPart::mixed` + RFC2231 长文件名） | ⬜ |
+| P2-01c | 附件（`MultiPart::mixed`） | ✅ |
 | P2-01d | `commands::send_mail`（解密凭证 → 投递） | ⬜ |
 | P2-01e | 写信/回复/转发界面 | ⬜ |
 | P2-01f | STARTTLS（587）支持 | ⬜ |
@@ -78,8 +78,8 @@ pub fn build_message(mail: &OutgoingMail) -> Result<Message, MailError>;
 | --- | --- |
 | `cargo check --all-targets` | exit 0，零警告 ✅ |
 | `cargo fmt --check` / `cargo clippy -D warnings` | exit 0 ✅ |
-| `cargo test --test smtp_send_test` | **11/11 通过**（0.00s，未触网）✅ |
-| 全量测试 | **161/161 通过** ✅ |
+| `cargo test --test smtp_send_test` | **18/18 通过**（0.00s，未触网）✅ |
+| 全量测试 | **172/172 通过** ✅ |
 
 ### 4.1 测试为何只覆盖"网络之前"
 
@@ -99,7 +99,30 @@ pub fn build_message(mail: &OutgoingMail) -> Result<Message, MailError>;
 > 断言一律用 **ASCII 标记**：中文主题会被 RFC2047 编码成 `=?utf-8?…?=`，
 > 直接在原始报文里找不到原字 —— 用中文断言只会得到假失败。
 
-### 4.2 本轮两处工程教训
+### 4.2 附件：一个必须避开的坑
+
+`Attachment::new(filename)` 会设 `Disposition::Attached` —— 也就是说
+**拿它构造正文部分，客户端会把正文当附件显示**（源码 `message/attachment.rs:50`）。
+正文必须用 `SinglePart::builder().header(ContentType::TEXT_PLAIN)`。
+
+这一点有专门用例 `body_part_is_not_marked_as_attachment` 钉住：
+断言整个报文里 `Content-Disposition` **只出现一次**（就是那个真附件）。
+
+结构按「最小够用」选择：
+
+| 正文 | 附件 | 结构 |
+| --- | --- | --- |
+| 纯文本 | 无 | 单部分 |
+| 纯文本 + HTML | 无 | `multipart/alternative` |
+| 任意 | 有 | `multipart/mixed` 外层，正文按上表决定内层 |
+
+每条分支都有用例：`attachment_wraps_message_in_multipart_mixed`、
+`html_plus_attachment_nests_alternative_inside_mixed`、
+`plain_text_attachment_does_not_force_html`（纯文本附件不该凭空造出 alternative）、
+`attachment_body_still_present_alongside_attachment`（加附件不能把正文弄丢）、
+`supports_multiple_attachments`、`rejects_invalid_attachment_content_type`。
+
+### 4.3 本轮两处工程教训
 
 1. **不要用 PowerShell 5.1 的 `Set-Content -Encoding UTF8` 改 UTF-8 源码。**
    我用它给 `smtp_test.rs` 加一行 import，结果整个文件的中文变成乱码，编译直接失败。

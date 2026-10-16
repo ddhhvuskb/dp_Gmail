@@ -27,6 +27,9 @@ pub enum MailError {
     #[error("邮箱地址格式非法：{0}")]
     BadAddress(String),
 
+    #[error("附件的 Content-Type 非法：{0}")]
+    BadContentType(String),
+
     #[error("邮件组装失败：{0}")]
     BuildMail(#[from] lettre::error::Error),
 
