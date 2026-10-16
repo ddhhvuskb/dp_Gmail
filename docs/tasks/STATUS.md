@@ -375,3 +375,4 @@ P0-08 CI（无依赖，可随时做）
 | 2026-10-17 | **真实数据撞出并修掉一处解析缺陷**：31 封真实邮件里 2 封的 `From` 头只有显示名、没有地址（真实地址在 `Sender`），解析后发件人为空。`parser.rs` 新增 `resolve_from()` 回退到 `Sender` 并保留 `From` 显示名；复验后缺字段从 3 处降到 1 处（剩下那处是「无 `Date` 头」，属已记录的有意处理） |
 | 2026-10-17 | **修掉列表 200 条硬顶（分页）**：`useListRows` 改 `useInfiniteQuery`，`MessageList` 增 `onLoadMore` 触底信号，`App` 摊平 `pages` 并守住 `fetchNextPage`。**未新增任何依赖**。实测 900 封全部可达，边翻页边滚动 400 帧零掉帧。见 `perf-verification.md` §6.5 |
 | 2026-10-17 | **顺手清掉 3 处 prettier 违规**：`FolderTree.tsx` / `MessageDetail.tsx` / `lib/api.ts` 此前不满足 prettier 格式（`要求1.txt` §5.4 强制 rustfmt + prettier）。`npx prettier --check "src/**/*.{ts,tsx}"` 现已全绿 |
+| 2026-10-17 | **补测存储组合链路**：新增 `live_sync_pipeline_test.rs`（只写临时库），把真实报文走完「解析 → 落库 → 读回 → FTS 检索 → 重复 upsert 去重」。21 封真实邮件全部解析成功、FTS **21/21 命中**、去重不翻倍 |
