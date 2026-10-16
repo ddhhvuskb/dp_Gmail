@@ -1,0 +1,30 @@
+# Rust
+/src-tauri/target/
+**/*.rs.bk
+*.pdb
+
+# Node
+node_modules/
+/dist/
+*.local
+
+# Tauri
+/src-tauri/gen/
+
+# 环境与密钥 —— 凭证与密钥文件绝不入库
+.env
+.env.*
+*.key
+*.keyfile
+keyfile.json
+
+# 编辑器 / 系统
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# 日志
+*.log

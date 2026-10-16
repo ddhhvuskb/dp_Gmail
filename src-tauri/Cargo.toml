@@ -1,0 +1,40 @@
+# 依赖按 ADR-0001 基线，在对应任务开始时逐个加入，避免声明未使用的依赖。
+# P0-01 需要：async-imap / async-native-tls / tokio / futures / thiserror / tracing
+# P0-02 需要：mail-parser / ammonia
+# P0-03 需要：rusqlite
+# P0-04 需要：tauri / tauri-build / serde / serde_json
+
+[package]
+name = "dp-gmail"
+version = "0.1.0"
+edition = "2021"
+rust-version = "1.77"
+publish = false
+description = "本地优先跨平台桌面邮件客户端"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# 框架。命令桥只做参数校验和转发（DESIGN.md P0-04 约束）。
+tauri = { version = "2", features = [] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+# IMAP 协议。默认 feature 是 runtime-async-std，本项目用 tokio，必须关闭默认值。
+# 注意 1：0.12 已移除 async_imap::connect，改为自行建流后 Client::new()。
+# 注意 2：runtime-tokio 下它用的是 tokio 的 io trait，不要接 futures-io 兼容层。
+async-imap = { version = "0.12", default-features = false, features = ["runtime-tokio"] }
+# TLS 适配层，底层是 native-tls（Windows 走 SChannel）。默认 feature 是 runtime-smol。
+# runtime-tokio 下产出 tokio 流，与上面直接对接。
+async-native-tls = { version = "0.6", default-features = false, features = ["runtime-tokio"] }
+# MIME 解析。full_encoding 打开 encoding_rs，用于 unknown-8bit 等非标准编码兜底。
+mail-parser = { version = "0.11", features = ["full_encoding"] }
+# HTML 净化。净化属安全代码，不自造实现（AGENTS.md 禁止项）。
+ammonia = "4"
+# SQLite。bundled 在本地编译 SQLite，FTS5 默认已启用（P1 用），无需额外 crate。
+# 禁止用 ORM（DESIGN.md P0-03 约束），一律手写 SQL + 事务。
+rusqlite = { version = "0.40", features = ["bundled"] }
+futures = "0.3"
+thiserror = "2"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "io-util"] }
+tracing = "0.1"
