@@ -41,9 +41,9 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | P0-04a | Tauri 脚手架 + 前端壳子 | ✅ | `cargo check` + `npm run build` | exit 0 |
 | P0-04b | `storage::list_messages` + DTO | ✅ | `cargo test --test list_messages_test` | **6/6** |
 | P0-04c | `commands::get_messages` + 分页校验 | ✅ | `cargo test --test commands_test` | **4/4** |
-| P0-04d | `commands::sync_folder` | ⛔ | — | **依赖 P0-07 凭证存储** |
-| P0-05 | 账户配置界面 | ⛔ | `tsc --noEmit` | **依赖 P0-07（密码无处可去）** |
-| P0-06 | 邮件列表 + 详情（虚拟滚动，HTML 净化） | ⬜ | `tsc --noEmit` | 详情缺一条取正文的命令，待决策 |
+| P0-04d | `commands::sync_folder` | ✅ | `cargo test --test sync_support_test` | **已改编号为 P0-07e**，见下方 |
+| P0-05 | 账户配置界面 | ✅ | `tsc --noEmit` + 实跑 | 见下方同名行（原先因依赖 P0-07 阻塞） |
+| P0-06 | 邮件列表 + 详情（虚拟滚动，HTML 净化） | ✅ | `tsc --noEmit` + 实跑 | `get_message`（P0-06e）已实现；见 `P0-06-message-list-detail.md` |
 | P0-07a | `security/keyfile.rs` 密钥文件管理 | ✅ | `cargo test --test keyfile_test` | **8/8** |
 | P0-07b | `security/credentials.rs` AES-256-GCM | ✅ | `cargo test --test credentials_test` | **8/8** |
 | P0-07c | `accounts.secret_encrypted` + schema 迁移 + 账户读写 | ✅ | `cargo test --test schema_migration_test`、`account_store_test` | **5/5 + 6/6** |
@@ -228,9 +228,8 @@ src/
 | P1-01 | **FTS5 全文检索**（schema v3 + `search_messages`） | ✅ 12/12 + 5/5 |
 | P1-02 | **多账户 + 统一收件箱**（`list_folders` / `list_unified_messages`） | ✅ 后端 13/13 |
 | P1-03 | **搜索界面 + 统一收件箱界面**（文件夹树 / 搜索框 / ListMode） | ✅ 已实跑验证 |
-| P2-01 | **发信全链路**（后端 + 命令 + 界面 + 附件 + STARTTLS） | ✅ **P2 后端全部收口** |
-| P2 剩余 | IMAP 侧 STARTTLS（属 P3 范畴；QQ 用 993 隐式 TLS，不影响 P0） | ⬜ |
-| P3-01 | **国内邮箱兼容层**（调研完成，**实现待方案确认**） | 🟨 见 `P3-01-provider-compat.md` |
+| P2-01 | **发信全链路**（后端 + 命令 + 界面 + 附件 + STARTTLS） | ✅ **P2 全部收口** |
+| P3-01 | **国内邮箱兼容层**（地址核实 + 网易 `ID` 命令已实现；企业邮箱方案待决策） | 🟨 见 `P3-01-provider-compat.md` |
 | P3-02 | OAuth | ⬜ |
 | P4 | UI 打磨 + 可选 AI 摘要/待办提取 | ⬜ |
 
@@ -266,7 +265,7 @@ src/
 P0-01 ✅ ─┐
 P0-02 ✅ ─┼─→ P0-03 ✅ ─→ P0-04a/b ✅ ─→ P0-04c get_messages ✅
           │                                   │
-          │                                   ├─→ get_message（已批准，待实现）─→ P0-06
+          │                                   ├─→ get_message（已实现）─→ P0-06
           │                                   │
 P0-07a/b ✅ ─→ P0-07c ✅ ─┬─→ P0-07d add_account ─→ P0-05 账户配置界面
                           └─→ P0-07e sync_folder

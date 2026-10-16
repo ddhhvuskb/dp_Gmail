@@ -102,10 +102,10 @@ let builder = match cfg.smtp_tls {
 若哪天有人在 StartTls 分支前面插了建连代码，这两条会因真去连 `smtp.qq.com` 而变慢，
 从而暴露顺序问题。**删掉旧用例会丢掉这层保护，替换成新用例才能留住它。**
 
-> IMAP 侧的 STARTTLS **尚未实现**：`connect_and_login` 仍对 `TlsMode::StartTls` 返回
-> `UnsupportedTlsMode`。IMAP 的 STARTTLS 需要「明文建连 → 发 STARTTLS 命令 →
-> 取出裸流 → 套 TLS → 重新构造 Client」五步，与 SMTP 一行搞定不同。
-> QQ 用的是 993 隐式 TLS，故这不影响 P0 目标；属 P3（国内邮箱兼容层）范围。
+> **IMAP 侧的 STARTTLS 已完成**（2026-10-16，后续轮次）：`connect_and_login` 现按
+> `TlsMode` 分支，「明文建连 → 读问候语 → 发 STARTTLS → 取出裸流 → 套 TLS → 重建 Client」。
+> 注意 `STARTTLS` 之后服务器**不再发问候语**，故升级后直接登录。
+> 详见 `src-tauri/src/mail/imap_client.rs` 的模块文档。
 
 ### 4.4 命令层：附件为什么传路径而不是字节
 
