@@ -51,9 +51,16 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | P0-07e | `commands::sync_folder`（原 P0-04d） | ✅ | `cargo test --test sync_support_test` | **11/11**；IMAP 段待真机联调 |
 | P0-05 | 账户配置界面（服务商自动识别，不存明文密码） | ✅ | `tsc --noEmit` + `cargo test` | **5/5**；UI 未在真实窗口跑过 |
 | P0-06 | 邮件列表 + 详情（虚拟滚动，HTML 净化） | ✅ | `tsc --noEmit` + `cargo test` | **5/5 + 5/5**；UI 未在真实窗口跑过 |
-| P0-08 | CI 构建 Windows x64 + ARM64 | ⬜ | workflow 语法校验 | — |
+| P0-08 | CI 构建 Windows x64 + ARM64 | ✅ | YAML 校验 + 本地实跑 | 工作流落地；x64 release 构建已验证，**ARM64 仅在 CI 首次运行时验证** |
 
 ### 累计测试：**116 全绿**
+
+### P0 完成度：**8/8 任务全部落地**
+
+| 阶段 | 状态 |
+| --- | --- |
+| P0-01 ~ P0-08 | ✅ 全部完成 |
+| **仍未验证的总项** | 界面从未在真实 Tauri 窗口跑过；`fetch_recent` 未真机联调；ARM64 构建未本地验证 |
 
 | 测试目标 | 用例数 |
 | --- | --- |
@@ -192,3 +199,4 @@ P0-08 CI（无依赖，可随时做）
 | 2026-10-16 | **P0-07e `sync_folder` 完成**：三段式编排规避 `MutexGuard` 跨 `.await`；`upsert_messages` 整批单事务 |
 | 2026-10-16 | **P0-06 完成**：`get_message` + `list_accounts` 命令；前端三栏界面、虚拟滚动列表、净化后渲染详情 |
 | 2026-10-16 | **P0-05 完成**：`resolve_provider` 命令（用户批准）+ 账户表单/列表，实时识别、密码即时清空 |
+| 2026-10-16 | **P0-08 完成**：CI 工作流（矩阵 x64/ARM64）；`cargo clippy -D warnings` 本地通过；x64 release 构建实跑 |

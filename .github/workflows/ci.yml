@@ -1,0 +1,110 @@
+name: CI
+
+# P0-08：矩阵构建 Windows x64 + ARM64。
+# 关键点：tauri-build 在编译期校验 frontendDist 指向的目录必须存在，
+# 所以 cargo build 之前**必须**先跑 npm run build 产出 dist/。
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  # Rust 编译在 CI 上偶尔会因为增量缓存产生噪声警告，这里只保留错误
+  RUSTFLAGS: ""
+
+jobs:
+  check:
+    name: 格式、Lint 与测试
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: 安装前端依赖
+        run: npm ci
+
+      - name: 前端类型检查（tsc --noEmit）
+        run: npx tsc --noEmit
+
+      - name: 安装 Rust 工具链
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: 缓存 cargo 产物
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: Rust 格式检查
+        working-directory: src-tauri
+        run: cargo fmt --check
+
+      - name: Clippy（警告即错误）
+        working-directory: src-tauri
+        run: cargo clippy --all-targets -- -D warnings
+
+      - name: 后端测试
+        working-directory: src-tauri
+        run: cargo test --all-targets
+
+  build:
+    name: 构建 ${{ matrix.target }}
+    needs: check
+    runs-on: windows-latest
+    strategy:
+      # 一个目标失败不要掐掉另一个，否则看不到 ARM64 到底是哪一步断的
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-pc-windows-msvc
+          - aarch64-pc-windows-msvc
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 安装 Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: 安装前端依赖
+        run: npm ci
+
+      - name: 构建前端（tauri-build 编译期需要 dist/ 存在）
+        run: npm run build
+
+      - name: 安装 Rust 工具链与目标
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: 缓存 cargo 产物
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+          key: ${{ matrix.target }}
+
+      - name: 构建后端（${{ matrix.target }}）
+        working-directory: src-tauri
+        run: cargo build --release --target ${{ matrix.target }}
+
+      - name: 确认产物存在
+        shell: pwsh
+        run: |
+          $exe = "src-tauri/target/${{ matrix.target }}/release/dp-gmail.exe"
+          if (-not (Test-Path $exe)) {
+            Write-Error "未找到构建产物：$exe"
+            exit 1
+          }
+          $size = (Get-Item $exe).Length
+          Write-Output "产物：$exe（$([math]::Round($size / 1MB, 1)) MB）"
