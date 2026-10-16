@@ -14,10 +14,20 @@ export type ListMode =
   | { kind: "unified" }
   | { kind: "search"; query: string };
 
+/** 写信草稿。`html` 为空串表示只发纯文本。 */
+export interface ComposeDraft {
+  to: string;
+  subject: string;
+  text: string;
+  html: string;
+}
+
 interface SelectionState {
   accountId: number | null;
   mode: ListMode;
   messageId: number | null;
+  /** `null` 表示写信面板未打开。 */
+  compose: ComposeDraft | null;
 
   setAccount: (accountId: number | null) => void;
   showFolder: (folderId: number, label: string) => void;
@@ -25,12 +35,19 @@ interface SelectionState {
   showSearch: (query: string) => void;
   clearList: () => void;
   selectMessage: (messageId: number | null) => void;
+
+  openCompose: (draft?: Partial<ComposeDraft>) => void;
+  updateCompose: (patch: Partial<ComposeDraft>) => void;
+  closeCompose: () => void;
 }
+
+const EMPTY_DRAFT: ComposeDraft = { to: "", subject: "", text: "", html: "" };
 
 export const useSelection = create<SelectionState>((set) => ({
   accountId: null,
   mode: { kind: "none" },
   messageId: null,
+  compose: null,
 
   // 换账户会连带清空列表与选中邮件，避免跨账户的残留选中态
   setAccount: (accountId) => set({ accountId, mode: { kind: "none" }, messageId: null }),
@@ -40,4 +57,9 @@ export const useSelection = create<SelectionState>((set) => ({
   showSearch: (query) => set({ mode: { kind: "search", query }, messageId: null }),
   clearList: () => set({ mode: { kind: "none" }, messageId: null }),
   selectMessage: (messageId) => set({ messageId }),
+
+  openCompose: (draft) => set({ compose: { ...EMPTY_DRAFT, ...draft } }),
+  updateCompose: (patch) =>
+    set((state) => (state.compose ? { compose: { ...state.compose, ...patch } } : state)),
+  closeCompose: () => set({ compose: null }),
 }));

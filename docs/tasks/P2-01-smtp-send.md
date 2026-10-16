@@ -15,8 +15,9 @@
 | P2-01b | HTML 正文（`multipart/alternative`） | ✅ |
 | P2-01c | 附件（`MultiPart::mixed`） | ✅ |
 | P2-01d | `commands::compose::send_mail`（解密凭证 → 投递） | ✅ |
-| P2-01e | 写信/回复/转发界面 | ⬜ |
+| P2-01e | 写信界面 + 回复/转发 | ✅（附件选择器除外） |
 | P2-01f | STARTTLS（587）支持 | ⬜ |
+| P2-01g | 附件选择器（需 `@tauri-apps/plugin-dialog`） | ⬜ |
 
 ## 2. 接口契约
 
@@ -97,6 +98,26 @@ pub fn build_message(mail: &OutgoingMail) -> Result<Message, MailError>;
 - 显示名缺省取路径文件名，两者都没有就报错，**不编一个假名字出来**。
 
 同样沿用三段式：附件读取（同步 IO）→ 解密凭证（加锁）→ SMTP 投递（不持锁）。
+
+### 4.5 写信界面（P2-01e）
+
+| 文件 | 作用 |
+| --- | --- |
+| `features/compose/ComposeForm.tsx` | 收件人 / 主题 / 纯文本正文 / HTML 正文 + 发送 |
+| `features/compose/drafts.ts` | **纯函数**：`buildReply` / `buildForward` 从已选邮件构造草稿 |
+| `stores/selection.ts` | 新增 `compose` 草稿状态与 `openCompose` / `updateCompose` / `closeCompose` |
+
+`drafts.ts` 与组件分开，是为了让「回复/转发怎么拼草稿」这件事**可被单独验证**，
+不必挂载 React 组件。回复会引用原文（逐行 `> `），转发会带上原始头信息。
+
+#### 附件选择器为何不在本轮
+
+文件选择需要 `@tauri-apps/plugin-dialog`：JS 包 + Rust crate + `lib.rs` 插件注册
++ capabilities 权限声明，四处都要动。按「一次一个函数/组件」的粒度，
+本轮先交付**写信 + 回复 + 转发**这条完整链路，附件 UI 单独一轮做完整 API 核实。
+
+**后端 `send_mail` 已支持附件**，缺的只是选取入口 —— 这一点在组件文件头也写明了，
+不是悄悄漏掉。
 
 ### 4.1 测试为何只覆盖"网络之前"
 

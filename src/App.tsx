@@ -1,21 +1,21 @@
 /**
- * 应用外壳：侧栏（账户配置 + 同步 + 文件夹树）+ 邮件列表 + 详情。
- *
- * 侧栏承载 P0-05 与 P1-03 的文件夹树，中栏承载 P0-06 / P1-02 / P1-03 的三种列表视图。
+ * 应用外壳：侧栏（账户配置 + 同步 + 文件夹树）+ 邮件列表 + 详情 + 写信面板。
  */
 
 import AccountForm from "./features/accounts/AccountForm";
 import AccountList from "./features/accounts/AccountList";
+import ComposeForm from "./features/compose/ComposeForm";
+import { buildForward, buildReply } from "./features/compose/drafts";
 import FolderTree from "./features/inbox/FolderTree";
 import InboxToolbar from "./features/inbox/InboxToolbar";
 import MessageDetail from "./features/inbox/MessageDetail";
 import MessageList from "./features/inbox/MessageList";
 import SearchBox from "./features/inbox/SearchBox";
 import { useAccounts, useFolders, useListRows, useMessage } from "./features/inbox/useInbox";
-import { useSelection } from "./stores/selection";
+import { useSelection, type ListMode } from "./stores/selection";
 
 /** 中栏标题：让人一眼知道当前看的是什么。 */
-function listTitle(mode: ReturnType<typeof useSelection.getState>["mode"]): string {
+function listTitle(mode: ListMode): string {
   switch (mode.kind) {
     case "folder":
       return mode.label;
@@ -34,6 +34,7 @@ export default function App() {
   const mode = useSelection((state) => state.mode);
   const messageId = useSelection((state) => state.messageId);
   const selectMessage = useSelection((state) => state.selectMessage);
+  const openCompose = useSelection((state) => state.openCompose);
 
   const folders = useFolders(accountId);
   const rows = useListRows(mode, accountId);
@@ -48,6 +49,10 @@ export default function App() {
     <div className="app">
       <aside className="app__sidebar">
         <h1 className="app__title">dp_Gmail</h1>
+
+        <button type="button" className="button" onClick={() => openCompose()}>
+          ✏️ 写邮件
+        </button>
 
         <AccountForm />
 
@@ -79,8 +84,30 @@ export default function App() {
         {messageId === null && <p className="app__hint">选一封邮件查看详情。</p>}
         {messageId !== null && message.isPending && <p className="app__hint">读取邮件…</p>}
         {message.isError && <p className="app__error">{String(message.error)}</p>}
-        {message.data && <MessageDetail message={message.data} />}
+        {message.data && (
+          <>
+            <div className="app__detail-actions">
+              <button
+                type="button"
+                className="button"
+                onClick={() => openCompose(buildReply(message.data))}
+              >
+                回复
+              </button>
+              <button
+                type="button"
+                className="button"
+                onClick={() => openCompose(buildForward(message.data))}
+              >
+                转发
+              </button>
+            </div>
+            <MessageDetail message={message.data} />
+          </>
+        )}
       </section>
+
+      <ComposeForm />
     </div>
   );
 }

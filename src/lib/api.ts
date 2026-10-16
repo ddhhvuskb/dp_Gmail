@@ -97,6 +97,13 @@ export interface UnifiedMessageSummary {
   attachment_count: number;
 }
 
+/** 发信附件入参：给**路径**而不是字节。 */
+export interface AttachmentInput {
+  path: string;
+  /** 显示用的文件名；缺省取路径的文件名。 */
+  filename?: string | null;
+}
+
 export const api = {
   listAccounts: () => invoke<AccountView[]>("list_accounts"),
 
@@ -138,4 +145,19 @@ export const api = {
 
   syncFolder: (accountId: number, mailbox: string, limit: number) =>
     invoke<SyncReport>("sync_folder", { accountId, mailbox, limit }),
+
+  /**
+   * 发送一封邮件。
+   *
+   * 附件传路径而非字节 —— 前端传 `Uint8Array` 会被序列化成 JSON 数字数组，
+   * 几 MB 就能把 IPC 打爆（见 `commands/compose.rs` 的说明）。
+   */
+  sendMail: (input: {
+    accountId: number;
+    to: string[];
+    subject: string;
+    bodyText: string;
+    bodyHtml: string | null;
+    attachments: AttachmentInput[];
+  }) => invoke<void>("send_mail", input),
 };
