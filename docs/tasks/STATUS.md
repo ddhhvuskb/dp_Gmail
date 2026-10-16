@@ -47,15 +47,15 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | P0-07a | `security/keyfile.rs` 密钥文件管理 | ✅ | `cargo test --test keyfile_test` | **8/8** |
 | P0-07b | `security/credentials.rs` AES-256-GCM | ✅ | `cargo test --test credentials_test` | **8/8** |
 | P0-07c | `accounts.secret_encrypted` + schema 迁移 + 账户读写 | ✅ | `cargo test --test schema_migration_test`、`account_store_test` | **5/5 + 6/6** |
-| P0-07d | `commands::add_account`（原 P0-04） | ⬜ | `cargo check` | — |
-| P0-07e | `commands::sync_folder`（原 P0-04d） | ⬜ | `cargo check` | — |
+| P0-07d | `commands::add_account`（原 P0-04） | ✅ | `cargo test --test add_account_test` | **7/7** |
+| P0-07e | `commands::sync_folder`（原 P0-04d） | 🟨 | `cargo check` | 依赖已备齐，实现待做 |
 | P0-08 | CI 构建 Windows x64 + ARM64 | ⬜ | workflow 语法校验 | — |
 
-### 累计测试：**80 全绿**
+### 累计测试：**90 全绿**
 
 | 测试目标 | 用例数 |
 | --- | --- |
-| `provider_test` | 7 |
+| `provider_test` | 10 |
 | `imap_client_test` | 2 |
 | `parser_test` | 9 |
 | `sanitize_test` | 5 |
@@ -68,6 +68,7 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | `credentials_test` | 8 |
 | `schema_migration_test` | 5 |
 | `account_store_test` | 6 |
+| `add_account_test` | 7 |
 
 ---
 
@@ -159,3 +160,6 @@ P0-08 CI（无依赖，可随时做）
 | 2026-10-16 | git 2.55.0 装毕并 `git init`；**P0-04a Tauri 脚手架 + 前端壳子完成** |
 | 2026-10-16 | **P0-04b `list_messages` 完成并验证**；发现 `sync_folder` 同样依赖 P0-07 凭证存储 |
 | 2026-10-16 | **P0-04c `get_messages` 命令完成并验证**；识别出 P0-05/P0-04d 均被 P0-07 卡住，P0-06 缺取正文接口 |
+| 2026-10-16 | **P0-07a/b 加密核心完成**（ADR-0002，用户确认方案）；aes-gcm 0.11 的 `AeadInOut` 新 API 已核实 |
+| 2026-10-16 | **P0-07c 完成**：`accounts.secret_encrypted` + `PRAGMA user_version` 迁移机制 |
+| 2026-10-16 | **P0-07d `add_account` 完成**；`provider::find_by_id` 补齐 `sync_folder` 的前置 |

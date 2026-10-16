@@ -6,14 +6,24 @@ use std::sync::Mutex;
 
 use rusqlite::Connection;
 
-/// 应用状态。目前只有数据库连接。
+use crate::security::KEY_LEN;
+
+/// 应用状态：数据库连接 + 加密密钥。
 pub struct AppState {
     /// `rusqlite::Connection` 是 `Send` 但**不是** `Sync`，共享必须加锁。
     pub db: Mutex<Connection>,
+
+    /// AES-256-GCM 密钥，启动时由密钥文件读出或生成。
+    ///
+    /// 只在进程内存中，**不落日志、不进 `Debug`**（见 `ADR-0002` §2.4）。
+    pub crypto_key: [u8; KEY_LEN],
 }
 
 impl AppState {
-    pub fn new(db: Connection) -> Self {
-        Self { db: Mutex::new(db) }
+    pub fn new(db: Connection, crypto_key: [u8; KEY_LEN]) -> Self {
+        Self {
+            db: Mutex::new(db),
+            crypto_key,
+        }
     }
 }

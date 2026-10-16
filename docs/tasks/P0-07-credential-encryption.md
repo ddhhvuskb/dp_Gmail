@@ -22,8 +22,8 @@
 | P0-07a | `security/keyfile.rs` 密钥文件的生成 / 读取 / 校验 | ✅ |
 | P0-07b | `security/credentials.rs` AES-256-GCM 加解密 | ✅ |
 | P0-07c | `accounts.secret_encrypted` 列 + schema 版本迁移 + 账户读写 | ✅ |
-| P0-07d | `commands::add_account` 命令（P0-04 并入） | ⬜ |
-| P0-07e | `commands::sync_folder` 命令（P0-04d） | ⬜ |
+| P0-07d | `commands::add_account` 命令（P0-04 并入） | ✅ |
+| P0-07e | `commands::sync_folder` 命令（P0-04d） | 🟨 依赖已备齐，实现待做 |
 
 ---
 
@@ -157,3 +157,51 @@ pub fn load_encrypted_secret(
 > 写 `stored_blob_is_not_the_plaintext` 时踩了一个坑：一开始把每列都按 `Vec<u8>` 读，
 > 撞上 `InvalidColumnType(0, "id", Integer)`。必须按 `rusqlite::types::Value` 分类型取字节，
 > 否则 INTEGER/TEXT 列根本读不出来，测试会以假阳性通过。
+
+---
+
+## 8. 验收结果（P0-07d `add_account`）
+
+| 检查项 | 实测 |
+| --- | --- |
+| `cargo check --all-targets` | exit 0，零警告 ✅ |
+| `cargo test --test add_account_test` | **7/7 通过** ✅ |
+
+### 8.1 命令链路
+
+```
+add_account(email, secret, display_name)
+  ├─ validate_new_account()          参数校验 + 服务商自动识别
+  ├─ security::encrypt_secret()      AES-256-GCM 加密
+  └─ storage::create_account()       密文落库，返回 id
+```
+
+`AppState` 增加 `crypto_key`，由 `run()` 的 `setup` 阶段从密钥文件读取或生成，
+**只存在于进程内存**，不进日志、不进 `Debug`。
+
+### 8.2 安全性质已被测试固化
+
+| 性质 | 用例 |
+| --- | --- |
+| 未收录的服务商被拒（不猜） | `rejects_unknown_provider` |
+| 空邮箱 / 空授权码被拒 | `rejects_empty_email`、`rejects_empty_secret` |
+| **错误信息绝不回显授权码**（错误会打到前端甚至日志） | `error_messages_never_echo_the_secret` |
+| 本地部分大小写不被改写 | `preserves_local_part_case` |
+
+### 8.3 P0-07e `sync_folder` 的实施方案
+
+`sync_folder` 不能在 `commands/` 里写业务逻辑（`DESIGN.md` 禁止项），故拆为：
+
+| 层 | 新增 | 说明 |
+| --- | --- | --- |
+| `mail/provider.rs` | `find_by_id(id)` | ✅ 已完成。同步时手里只有 `provider_id`，没有邮箱可反查 |
+| `mail/sync.rs` | `fetch_recent(cfg, user, secret, mailbox, limit)` | ⬜ 异步部分：连 IMAP、SELECT、FETCH `BODY.PEEK[]`、返回原始报文 |
+| `storage/folder_store.rs` | `ensure_folder(conn, account_id, name)` | ⬜ 取或建文件夹行，同步前需要 `folder_id` |
+| `commands/sync.rs` | `sync_folder(...)` | ⬜ 编排：解密凭证 → 拉取 → 解析 → 落库 |
+
+**关键约束**：`rusqlite::Connection` 的 `MutexGuard` **不能跨 `.await` 持有**，
+否则 Tauri 命令的 future 不是 `Send`。因此必须先跑完整个 IMAP 阶段（await），
+拿到全部原始报文后再加锁写库。
+
+`Mailbox.exists: u32` 与 `Fetch.uid / body()` 的签名已读源码核实
+（`async-imap-0.12.0/src/types/mailbox.rs`、`fetch.rs:28,110`）。

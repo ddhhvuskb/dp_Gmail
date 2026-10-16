@@ -53,3 +53,11 @@ pub fn resolve_by_email(email: &str) -> Option<&'static ProviderConfig> {
         .iter()
         .find(|p| p.domains.contains(&domain.as_str()))
 }
+
+/// 按服务商标识取配置。
+///
+/// 同步时手里只有已落库的 `accounts.provider_id`，没有邮箱地址可反查，
+/// 故需要这个按 id 的入口。找不到返回 `None`，由调用方报错，不 panic。
+pub fn find_by_id(id: &str) -> Option<&'static ProviderConfig> {
+    PROVIDERS.iter().find(|p| p.id == id)
+}
