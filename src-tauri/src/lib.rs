@@ -37,6 +37,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::accounts::add_account,
             commands::messages::get_messages,
+            commands::sync::sync_folder,
         ])
         .run(tauri::generate_context!())
         .expect("Tauri 应用启动失败");

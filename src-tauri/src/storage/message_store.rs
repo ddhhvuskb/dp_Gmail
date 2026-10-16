@@ -4,7 +4,7 @@
 //! `DESIGN.md` 第三章的调用方向是 `mail → storage`，storage 不应反向依赖 mail。
 //! 映射由 `mail` 层负责。
 
-use rusqlite::{params, Connection};
+use rusqlite::{params, Connection, Transaction};
 
 use super::error::StorageError;
 
@@ -44,13 +44,48 @@ pub fn upsert_message(
     folder_id: i64,
     msg: &NewMessage,
 ) -> Result<i64, StorageError> {
-    let fetched_at = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .map(|d| d.as_secs() as i64)
-        .unwrap_or(0);
+    let tx = conn.transaction()?;
+    let message_id = write_one(&tx, folder_id, msg, now_unix())?;
+    tx.commit()?;
+    Ok(message_id)
+}
+
+/// 批量写入同一文件夹的多封邮件，返回写入条数。
+///
+/// **整个批次共用一个事务** —— 逐封调用 [`upsert_message`] 会开 N 个事务，
+/// 同步一个文件夹时开销显著。批次失败则整批回滚。
+pub fn upsert_messages(
+    conn: &mut Connection,
+    folder_id: i64,
+    msgs: &[NewMessage],
+) -> Result<u32, StorageError> {
+    // 同一批次共用一个时间戳，避免同批邮件出现毫秒级前后不一致。
+    let fetched_at = now_unix();
 
     let tx = conn.transaction()?;
+    for msg in msgs {
+        write_one(&tx, folder_id, msg, fetched_at)?;
+    }
+    tx.commit()?;
 
+    Ok(msgs.len() as u32)
+}
+
+/// 当前 Unix 秒。
+fn now_unix() -> i64 {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0)
+}
+
+/// 单封邮件的写入。**必须在调用方的事务里执行**，自身不开事务。
+fn write_one(
+    tx: &Transaction<'_>,
+    folder_id: i64,
+    msg: &NewMessage,
+    fetched_at: i64,
+) -> Result<i64, StorageError> {
     tx.execute(
         "INSERT INTO messages (
              folder_id, uid, message_id, subject, from_name, from_address,
@@ -99,7 +134,6 @@ pub fn upsert_message(
         )?;
     }
 
-    tx.commit()?;
     Ok(message_id)
 }
 

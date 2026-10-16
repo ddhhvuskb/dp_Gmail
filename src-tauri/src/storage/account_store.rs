@@ -55,3 +55,34 @@ pub fn load_encrypted_secret(
 
     Ok(found.flatten())
 }
+
+/// 账户的同步所需信息：身份 + 加密凭证。
+///
+/// **一次查询取齐**，避免「先读身份、再读凭证」之间出现状态不一致。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AccountCredentials {
+    pub email: String,
+    pub provider_id: String,
+    /// AES-256-GCM 密文；账户未设凭证时为 `None`。
+    pub secret_encrypted: Option<Vec<u8>>,
+}
+
+/// 读取账户的同步所需信息。账户不存在返回 `None`。
+pub fn load_account_credentials(
+    conn: &Connection,
+    account_id: i64,
+) -> Result<Option<AccountCredentials>, StorageError> {
+    conn.query_row(
+        "SELECT email, provider_id, secret_encrypted FROM accounts WHERE id = ?1",
+        params![account_id],
+        |row| {
+            Ok(AccountCredentials {
+                email: row.get(0)?,
+                provider_id: row.get(1)?,
+                secret_encrypted: row.get(2)?,
+            })
+        },
+    )
+    .optional()
+    .map_err(StorageError::from)
+}

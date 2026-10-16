@@ -23,7 +23,7 @@
 | P0-07b | `security/credentials.rs` AES-256-GCM 加解密 | ✅ |
 | P0-07c | `accounts.secret_encrypted` 列 + schema 版本迁移 + 账户读写 | ✅ |
 | P0-07d | `commands::add_account` 命令（P0-04 并入） | ✅ |
-| P0-07e | `commands::sync_folder` 命令（P0-04d） | 🟨 依赖已备齐，实现待做 |
+| P0-07e | `commands::sync_folder` 命令（P0-04d） | ✅ |
 
 ---
 
@@ -188,20 +188,52 @@ add_account(email, secret, display_name)
 | **错误信息绝不回显授权码**（错误会打到前端甚至日志） | `error_messages_never_echo_the_secret` |
 | 本地部分大小写不被改写 | `preserves_local_part_case` |
 
-### 8.3 P0-07e `sync_folder` 的实施方案
+### 8.3 P0-07e `sync_folder` 的实施结果
 
-`sync_folder` 不能在 `commands/` 里写业务逻辑（`DESIGN.md` 禁止项），故拆为：
-
-| 层 | 新增 | 说明 |
+| 层 | 新增 | 状态 |
 | --- | --- | --- |
-| `mail/provider.rs` | `find_by_id(id)` | ✅ 已完成。同步时手里只有 `provider_id`，没有邮箱可反查 |
-| `mail/sync.rs` | `fetch_recent(cfg, user, secret, mailbox, limit)` | ⬜ 异步部分：连 IMAP、SELECT、FETCH `BODY.PEEK[]`、返回原始报文 |
-| `storage/folder_store.rs` | `ensure_folder(conn, account_id, name)` | ⬜ 取或建文件夹行，同步前需要 `folder_id` |
-| `commands/sync.rs` | `sync_folder(...)` | ⬜ 编排：解密凭证 → 拉取 → 解析 → 落库 |
+| `mail/provider.rs` | `find_by_id(id)` | ✅ 同步时手里只有 `provider_id`，没有邮箱可反查 |
+| `mail/sync.rs` | `fetch_recent(cfg, user, secret, mailbox, limit)` | ✅ 异步段：SELECT + FETCH `BODY.PEEK[]` |
+| `mail/sync.rs` | `to_new_message(uid, parsed)` | ✅ mail → storage 的入参映射 |
+| `storage/folder_store.rs` | `ensure_folder(conn, account_id, name)` | ✅ `ON CONFLICT DO NOTHING` + 回查 |
+| `storage/message_store.rs` | `upsert_messages(conn, folder_id, &[..])` | ✅ **整批一个事务** |
+| `storage/account_store.rs` | `load_account_credentials(conn, id)` | ✅ 一次查询取齐身份 + 密文 |
+| `commands/sync.rs` | `sync_folder(...)` | ✅ 三段式编排 |
 
-**关键约束**：`rusqlite::Connection` 的 `MutexGuard` **不能跨 `.await` 持有**，
-否则 Tauri 命令的 future 不是 `Send`。因此必须先跑完整个 IMAP 阶段（await），
-拿到全部原始报文后再加锁写库。
+**`MutexGuard` 不跨 `.await`** 这条约束落实为三段式：
 
-`Mailbox.exists: u32` 与 `Fetch.uid / body()` 的签名已读源码核实
-（`async-imap-0.12.0/src/types/mailbox.rs`、`fetch.rs:28,110`）。
+```
+第一段（同步）  加锁：读身份 + 解密凭证 → 出块即释放
+第二段（异步）  全程不持锁：IMAP 拉取 + MIME 解析
+第三段（同步）  重新加锁：ensure_folder + upsert_messages
+```
+
+实现要点：
+
+- 用 `BODY.PEEK[]` 而非 `BODY[]` —— 后者会隐式把邮件标记为 `\Seen`，**同步不该改变服务端状态**。
+- 只取最后 `limit` 封：IMAP 序号区间是闭区间 `[exists-limit+1, exists]`。
+- 抽出了私有 `write_one(tx, ...)`，让单封写入与批量写入共用同一段 SQL，避免复制一份 20 行的 UPSERT。
+- `upsert_messages` **整批共用一个事务与一个时间戳**；批次中途失败整批回滚。
+
+**`Mailbox.exists: u32`、`Fetch.uid`、`Fetch::body()`、`Uid = u32` 均已读源码核实**
+（`async-imap-0.12.0/src/types/mailbox.rs`、`fetch.rs:28,110`、`types/mod.rs:80`）。
+
+### 8.4 验收结果（P0-07e）
+
+| 检查项 | 实测 |
+| --- | --- |
+| `cargo check --all-targets` | exit 0，零警告 ✅ |
+| `cargo test --test sync_support_test` | **11/11 通过** ✅ |
+
+| 性质 | 用例 |
+| --- | --- |
+| 同名文件夹复用同一行、跨账户互不干扰 | `ensure_folder_creates_then_reuses`、`ensure_folder_isolates_by_account` |
+| 批量写入整批落库 | `upsert_messages_stores_whole_batch` |
+| 同 UID 重同步是更新而非新增 | `upsert_messages_is_idempotent_per_uid` |
+| **批次失败整批回滚** | `upsert_messages_rolls_back_whole_batch_on_failure` |
+| 解析结果 → 存储入参的字段映射（含附件大小、多收件人拼接） | `to_new_message_*` 3 个用例 |
+| 缺 Date 头时记 0（列表排到最后，不会被误当新邮件） | `to_new_message_defaults_missing_date_to_zero` |
+| 批大小钳制 | `normalize_batch_clamps_to_bounds` |
+
+> **尚未验证**：`fetch_recent` 需要真实 IMAP 服务器才能真正跑通。
+> 目前只到 `cargo check` + 上游/下游单测。等 QQ 授权码到位后做真机联调。

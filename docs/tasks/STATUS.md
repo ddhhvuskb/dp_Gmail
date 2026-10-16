@@ -48,10 +48,10 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | P0-07b | `security/credentials.rs` AES-256-GCM | ✅ | `cargo test --test credentials_test` | **8/8** |
 | P0-07c | `accounts.secret_encrypted` + schema 迁移 + 账户读写 | ✅ | `cargo test --test schema_migration_test`、`account_store_test` | **5/5 + 6/6** |
 | P0-07d | `commands::add_account`（原 P0-04） | ✅ | `cargo test --test add_account_test` | **7/7** |
-| P0-07e | `commands::sync_folder`（原 P0-04d） | 🟨 | `cargo check` | 依赖已备齐，实现待做 |
+| P0-07e | `commands::sync_folder`（原 P0-04d） | ✅ | `cargo test --test sync_support_test` | **11/11**；IMAP 段待真机联调 |
 | P0-08 | CI 构建 Windows x64 + ARM64 | ⬜ | workflow 语法校验 | — |
 
-### 累计测试：**90 全绿**
+### 累计测试：**101 全绿**
 
 | 测试目标 | 用例数 |
 | --- | --- |
@@ -69,6 +69,7 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | `schema_migration_test` | 5 |
 | `account_store_test` | 6 |
 | `add_account_test` | 7 |
+| `sync_support_test` | 11 |
 
 ---
 
@@ -88,8 +89,9 @@ src-tauri/
     │   └── messages.rs       get_messages（仅校验 + 转发）
     ├── mail/
     │   ├── error.rs         MailError
-    │   ├── provider.rs      服务商表 + resolve_by_email
+    │   ├── provider.rs      服务商表 + resolve_by_email / find_by_id
     │   ├── imap_client.rs   connect_and_login（TLS + 30s）
+    │   ├── sync.rs          fetch_recent / to_new_message
     │   └── parser.rs        parse_message
     ├── security/
     │   ├── error.rs         SecurityError
@@ -99,8 +101,9 @@ src-tauri/
     └── storage/
         ├── error.rs         StorageError
         ├── schema.rs        init_schema / SCHEMA_VERSION（user_version 迁移）
-        ├── account_store.rs create_account / load_encrypted_secret
-        ├── message_store.rs upsert_message / list_messages
+        ├── account_store.rs create_account / load_account_credentials
+        ├── folder_store.rs  ensure_folder
+        ├── message_store.rs upsert_message(s) / list_messages
         └── mod.rs           open_database
 ```
 
@@ -163,3 +166,4 @@ P0-08 CI（无依赖，可随时做）
 | 2026-10-16 | **P0-07a/b 加密核心完成**（ADR-0002，用户确认方案）；aes-gcm 0.11 的 `AeadInOut` 新 API 已核实 |
 | 2026-10-16 | **P0-07c 完成**：`accounts.secret_encrypted` + `PRAGMA user_version` 迁移机制 |
 | 2026-10-16 | **P0-07d `add_account` 完成**；`provider::find_by_id` 补齐 `sync_folder` 的前置 |
+| 2026-10-16 | **P0-07e `sync_folder` 完成**：三段式编排规避 `MutexGuard` 跨 `.await`；`upsert_messages` 整批单事务 |
