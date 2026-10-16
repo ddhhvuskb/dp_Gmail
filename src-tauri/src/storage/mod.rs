@@ -12,6 +12,7 @@ pub mod error;
 pub mod folder_store;
 pub mod message_store;
 pub mod schema;
+pub mod search_store;
 
 pub use account_store::{
     create_account, list_accounts, load_account_credentials, load_encrypted_secret,
@@ -24,6 +25,7 @@ pub use message_store::{
     MessageDetail, MessageSummary, NewAttachment, NewMessage,
 };
 pub use schema::{init_schema, SCHEMA_VERSION};
+pub use search_store::{search_messages, MAX_SEARCH_LIMIT};
 
 /// 打开（或创建）数据库文件，设好连接级 PRAGMA，并确保表结构就绪。
 ///

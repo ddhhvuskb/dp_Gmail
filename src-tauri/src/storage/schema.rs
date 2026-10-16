@@ -60,19 +60,64 @@ CREATE TABLE IF NOT EXISTS attachments (
 
 CREATE INDEX IF NOT EXISTS idx_messages_folder_date ON messages (folder_id, date_unix DESC);
 CREATE INDEX IF NOT EXISTS idx_attachments_message  ON attachments (message_id);
+
+-- P1：全文检索。用外部内容表（content='messages'），正文不在 FTS 里再存一份。
+--
+-- tokenize='trigram' 是**中文检索的必然选择**：实测 FTS5 默认的 unicode61 会把
+-- 一整串汉字切成单个 token，「项目」搜不到「项目进度汇报」。
+-- trigram 也有代价 —— 它只索引三字符序列，**两字查询在 MATCH 下必然零命中**，
+-- 故 search_messages 对短查询走 LIKE 回退。
+CREATE VIRTUAL TABLE IF NOT EXISTS messages_fts USING fts5(
+    subject,
+    from_name,
+    from_address,
+    to_addresses,
+    text_body,
+    content='messages',
+    content_rowid='id',
+    tokenize='trigram'
+);
+
+-- 触发器保持 FTS 与 messages 同步。外部内容表的 'delete' 指令必须提供
+-- **索引时的原值**，所以删除/更新一律传 old.*。
+CREATE TRIGGER IF NOT EXISTS messages_fts_ai AFTER INSERT ON messages BEGIN
+    INSERT INTO messages_fts (rowid, subject, from_name, from_address, to_addresses, text_body)
+    VALUES (new.id, new.subject, new.from_name, new.from_address, new.to_addresses, new.text_body);
+END;
+
+CREATE TRIGGER IF NOT EXISTS messages_fts_ad AFTER DELETE ON messages BEGIN
+    INSERT INTO messages_fts (messages_fts, rowid, subject, from_name, from_address, to_addresses, text_body)
+    VALUES ('delete', old.id, old.subject, old.from_name, old.from_address, old.to_addresses, old.text_body);
+END;
+
+CREATE TRIGGER IF NOT EXISTS messages_fts_au AFTER UPDATE ON messages BEGIN
+    INSERT INTO messages_fts (messages_fts, rowid, subject, from_name, from_address, to_addresses, text_body)
+    VALUES ('delete', old.id, old.subject, old.from_name, old.from_address, old.to_addresses, old.text_body);
+    INSERT INTO messages_fts (rowid, subject, from_name, from_address, to_addresses, text_body)
+    VALUES (new.id, new.subject, new.from_name, new.from_address, new.to_addresses, new.text_body);
+END;
 ";
 
 /// 当前 schema 版本，存在 SQLite 内建的 `PRAGMA user_version` 里。
 ///
 /// - `1`：P0-03 的初始四表
 /// - `2`：P0-07，`accounts` 增加 `secret_encrypted`
-pub const SCHEMA_VERSION: i64 = 2;
+/// - `3`：P1，新增 FTS5 全文检索虚表与同步触发器
+pub const SCHEMA_VERSION: i64 = 3;
 
 /// 逐版本迁移语句，**只对已存在的库**执行。
 ///
 /// 全新库不走这里 —— `CREATE TABLE` 本身就是最新结构，
 /// 再补一次 `ALTER TABLE` 会因为列已存在而报错。
-const MIGRATIONS: &[(i64, &str)] = &[(2, "ALTER TABLE accounts ADD COLUMN secret_encrypted BLOB;")];
+const MIGRATIONS: &[(i64, &str)] = &[
+    (2, "ALTER TABLE accounts ADD COLUMN secret_encrypted BLOB;"),
+    (
+        3,
+        // FTS 虚表与触发器已由 SCHEMA_SQL 建好（都是 IF NOT EXISTS），
+        // 这里只需把历史邮件灌进索引。
+        "INSERT INTO messages_fts (messages_fts) VALUES ('rebuild');",
+    ),
+];
 
 /// 在**一个事务**内建表建索引，并按 `user_version` 补齐历史库缺的列。
 ///

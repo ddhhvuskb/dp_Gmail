@@ -40,9 +40,25 @@ fn seed_account_and_folder(conn: &Connection) {
 #[test]
 fn creates_all_p0_tables() {
     let conn = memory_db();
-    assert_eq!(
-        table_names(&conn),
-        vec!["accounts", "attachments", "folders", "messages"]
+    let names = table_names(&conn);
+
+    // 用「包含」而非「等于」：P1 之后 sqlite_master 里还会多出
+    // messages_fts 及其 4 张影子表（_data/_idx/_docsize/_config），
+    // 断言精确列表会跟着 FTS 实现细节一起碎掉。
+    for expected in ["accounts", "attachments", "folders", "messages"] {
+        assert!(
+            names.iter().any(|name| name == expected),
+            "缺少表 {expected}：{names:?}"
+        );
+    }
+}
+
+#[test]
+fn creates_fts_index_table() {
+    let conn = memory_db();
+    assert!(
+        table_names(&conn).iter().any(|name| name == "messages_fts"),
+        "P1 的全文检索虚表应随建表一起创建"
     );
 }
 
@@ -67,9 +83,12 @@ fn creates_expected_indexes() {
 #[test]
 fn init_schema_is_idempotent() {
     let mut conn = memory_db();
+    let before = table_names(&conn).len();
+
     init_schema(&mut conn).expect("重复建表不应失败");
     init_schema(&mut conn).expect("第三次建表也不应失败");
-    assert_eq!(table_names(&conn).len(), 4);
+
+    assert_eq!(table_names(&conn).len(), before, "重复调用不得新增任何表");
 }
 
 #[test]

@@ -51,14 +51,18 @@ fn open_database_creates_schema() {
     let path = temp_db_path("creates");
     let conn = open_database(&path).expect("应能打开并建库");
 
-    let tables: i64 = conn
-        .query_row(
-            "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%'",
-            [],
-            |row| row.get(0),
-        )
-        .expect("应能统计表数量");
-    assert_eq!(tables, 4, "应建出 P0 的四张表");
+    // 只断言四张基表存在，不数总数 —— FTS5 会额外带出
+    // messages_fts 及其影子表，精确计数会跟着 FTS 实现细节一起碎掉。
+    for expected in ["accounts", "attachments", "folders", "messages"] {
+        let present: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name = ?1",
+                [expected],
+                |row| row.get(0),
+            )
+            .expect("应能查表");
+        assert_eq!(present, 1, "缺少表 {expected}");
+    }
 
     drop(conn);
     let _ = std::fs::remove_file(&path);
