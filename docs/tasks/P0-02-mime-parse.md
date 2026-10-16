@@ -154,3 +154,17 @@ pub fn sanitize_html(html: &str) -> String;
 
 `chrono` 在 P0-02 **不需要** —— `mail_parser::DateTime::to_timestamp()` 已直接给出 Unix 整数。
 但 P0-03/P0-04 处理 IMAP `INTERNALDATE` 时可能仍需 `chrono`（`async-imap` 的 `Fetch::internal_date()` 返回 `chrono::DateTime`），故 ADR-0001 基线中保留该项，待实际使用时再引入。
+
+---
+
+## 9. 尚未验证
+
+| 项 | 说明 |
+| --- | --- |
+| **真实邮件报文** | 全部用例都是**手工构造**的 MIME 片段。真实世界邮件的多样性（各家客户端的编码字写法、嵌套 multipart、异常头部、超长头部）从未测过。 |
+| 非 UTF-8 编码正文 | 依赖 `mail-parser` 的 `full_encoding` feature，但**未用真实 GBK/GB2312 邮件验证过**。国内邮件里这类编码很常见。 |
+| 超大报文 | 没有体积上限与截断策略，也没有测试。（已知取舍，非缺陷） |
+| 附件正文 | P0 只解析元数据；P2 的附件发送走另一条路径（`OutgoingAttachment`），两者未打通。 |
+
+**最有价值的一次验证**：拿一封真实的 QQ 邮件（含中文、含附件）跑一遍 `parse_message`，
+断言主题、发件人、正文、时间四项与邮件客户端显示一致。需要 QQ 授权码。

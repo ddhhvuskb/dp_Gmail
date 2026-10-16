@@ -134,11 +134,21 @@ pub async fn get_messages(
 - `MessageSummary` 直接 `derive(serde::Serialize)`，避免在 `commands/` 再复制一份逐字段等同的 DTO（那是过度设计）。
 - 数据库路径：`app.path().app_data_dir()?` + `dp_gmail.sqlite`，`setup` 阶段建目录、开库、`app.manage(AppState::new(conn))`。
 
-### 6.2 待解决：P0-06「详情」缺少取正文的命令
+### 6.2 已解决：P0-06「详情」缺少取正文的命令
 
 P0-04 的命令清单是 `add_account / sync_folder / get_messages` 三个。
 但 P0-06 要求「邮件列表 **+ 详情**」，而 `get_messages` 只返回摘要（不含 `text_body` / `html_body`）。
 
-要么新增一个取单封详情的命令（属于新增接口，按第六章需人工确认），
-要么让 `get_messages` 连带返回正文（列表页会白白搬运大量正文，且违背摘要 DTO 的初衷）。
-**已提交用户决策，未获答复前不擅自新增命令。**
+**最终结论：新增了 `get_message` 命令**（当时按第六章提交用户确认，已获批准并实现）。
+没有让 `get_messages` 连带返回正文 —— 那会让列表页白白搬运大量正文，
+违背摘要 DTO 的初衷。
+
+---
+
+## 7. 尚未验证
+
+| 项 | 说明 |
+| --- | --- |
+| **IPC 往返** | 命令的**参数名映射**（Tauri v2 默认 camelCase）只在实跑中观察到过零星几次，**没有系统验证**。单测直接调函数，绕过不了 serde 与 IPC 层。 |
+| 全部命令的错误分支 | 测试覆盖的是成功路径与参数校验；数据库异常、账户不存在等分支未逐一验证。 |
+| 前端错误呈现 | 后端返回的 `Err(String)` 在界面上的显示效果，只在个别场景看过。 |
