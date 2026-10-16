@@ -1,0 +1,145 @@
+//! 真实网络验证 —— 把「零真实执行」的网络代码真跑一遍。
+//!
+//! 本文件的用例会**真的连到 QQ / 网易的线上服务器**，故全部标 `#[ignore]`，
+//! 默认不参与 `cargo test`。运行方式：
+//!
+//! ```text
+//! cargo test --manifest-path src-tauri/Cargo.toml --test live_network_test -- --ignored --nocapture
+//! ```
+//!
+//! ## 没有授权码为什么也能验证
+//!
+//! 用**伪造的账号密码**登录，断言错误落在 `Imap` / `Smtp` 变体上。
+//! 判别力在于：TLS 握手、证书校验、IMAP 问候语读取、`CAPABILITY`、
+//! `LOGIN` 往返、SMTP `EHLO` / `AUTH` 协商 —— **只要有一环没跑通**，
+//! 错误就会落在 `Tls` / `Io` / `Timeout` 上或丢失 SMTP 状态码，
+//! 而不是拿到服务器明确回出的拒绝。
+//!
+//! 换言之：**拿到协议层拒绝 == 整条链路真的走到服务器并收到了回话。**
+//!
+//! ## 尚未覆盖的边界
+//!
+//! **成功的登录**与**真实的投递**仍需用户提供授权码。本文件不触碰该边界，
+//! 也不会有任何邮件被投递 —— 认证在 `DATA` 之前就必然失败。
+//! 完整的验证债清单见 `docs/tasks/STATUS.md`。
+
+use dp_gmail::mail::error::MailError;
+use dp_gmail::mail::imap_client::connect_and_login;
+use dp_gmail::mail::provider::{ProviderConfig, TlsMode};
+use dp_gmail::mail::smtp::{send_mail, OutgoingMail};
+
+/// 伪造凭证。**不得**替换成真实账号 —— 本文件会被反复执行。
+const FAKE_USER: &str = "dpgmail_selftest_account_not_exist";
+const FAKE_SECRET: &str = "dpgmail_bogus_password_for_link_test_only";
+
+/// 探测用配置。地址与 `provider.rs` 中已核实的条目一致，端口按被测路径取。
+const QQ_IMAP_993: ProviderConfig = ProviderConfig {
+    id: "qq-live-probe",
+    display_name: "QQ邮箱",
+    domains: &["qq.com"],
+    imap_host: "imap.qq.com",
+    imap_port: 993,
+    imap_tls: TlsMode::Implicit,
+    smtp_host: "smtp.qq.com",
+    smtp_port: 465,
+    smtp_tls: TlsMode::Implicit,
+};
+
+/// 163 的 IMAP STARTTLS 走 143：已实测 `a1 OK Begin TLS negotiation`。
+/// （QQ 的 143 不支持 STARTTLS，实测回 `* BAD Command!`，故不能拿来测。）
+const NETEASE_IMAP_143: ProviderConfig = ProviderConfig {
+    id: "netease163-live-probe",
+    display_name: "网易163邮箱",
+    domains: &["163.com"],
+    imap_host: "imap.163.com",
+    imap_port: 143,
+    imap_tls: TlsMode::StartTls,
+    smtp_host: "smtp.163.com",
+    smtp_port: 465,
+    smtp_tls: TlsMode::Implicit,
+};
+
+const QQ_SMTP_587: ProviderConfig = ProviderConfig {
+    id: "qq-live-probe-starttls",
+    display_name: "QQ邮箱",
+    domains: &["qq.com"],
+    imap_host: "imap.qq.com",
+    imap_port: 993,
+    imap_tls: TlsMode::Implicit,
+    smtp_host: "smtp.qq.com",
+    smtp_port: 587,
+    smtp_tls: TlsMode::StartTls,
+};
+
+fn probe_mail() -> OutgoingMail {
+    OutgoingMail {
+        from: "dpgmail_selftest@qq.com".to_owned(),
+        to: vec!["dpgmail_selftest_recipient@example.com".to_owned()],
+        subject: "dp_Gmail 网络自检".to_owned(),
+        body_text: "本邮件不会被投递：认证在 DATA 之前必然失败。".to_owned(),
+        body_html: None,
+        attachments: Vec::new(),
+    }
+}
+
+/// 断言错误发生在**服务器回过话之后**的协议层。
+fn expect_protocol_rejection(err: &MailError, stage: &str) {
+    match err {
+        MailError::Imap(e) => {
+            println!("[{stage}] 链路走通，服务器拒绝登录: {e}");
+        }
+        MailError::Smtp(e) => {
+            let status = e.status();
+            assert!(
+                status.is_some(),
+                "[{stage}] 期望服务器回出 SMTP 状态码，实际没有 —— 错误是 {e:?}"
+            );
+            assert!(!e.is_tls(), "[{stage}] TLS 握手就没过: {e:?}");
+            println!("[{stage}] 链路走通，服务器拒绝认证: {status:?} {e}");
+        }
+        other => panic!(
+            "[{stage}] 期望在协议层被服务器拒绝，实际是 {other:?} —— \
+             说明 TLS 握手 / 问候语 / 命令往返至少有一环没走到"
+        ),
+    }
+}
+
+#[tokio::test]
+#[ignore = "真实网络：连 imap.qq.com:993"]
+async fn live_imap_implicit_tls_reaches_server_rejection() {
+    let err = match connect_and_login(&QQ_IMAP_993, FAKE_USER, FAKE_SECRET).await {
+        Ok(_) => panic!("伪造凭证不应登录成功"),
+        Err(e) => e,
+    };
+    expect_protocol_rejection(&err, "IMAP 993 隐式 TLS");
+}
+
+#[tokio::test]
+#[ignore = "真实网络：连 imap.163.com:143 并 STARTTLS 升级"]
+async fn live_imap_starttls_upgrade_reaches_server_rejection() {
+    let err = match connect_and_login(&NETEASE_IMAP_143, FAKE_USER, FAKE_SECRET).await {
+        Ok(_) => panic!("伪造凭证不应登录成功"),
+        Err(e) => e,
+    };
+    expect_protocol_rejection(&err, "IMAP 143 STARTTLS 升级");
+}
+
+#[tokio::test]
+#[ignore = "真实网络：连 smtp.qq.com:465"]
+async fn live_smtp_implicit_tls_reaches_server_rejection() {
+    let err = match send_mail(&QQ_IMAP_993, FAKE_USER, FAKE_SECRET, &probe_mail()).await {
+        Ok(()) => panic!("伪造凭证不应投递成功"),
+        Err(e) => e,
+    };
+    expect_protocol_rejection(&err, "SMTP 465 隐式 TLS");
+}
+
+#[tokio::test]
+#[ignore = "真实网络：连 smtp.qq.com:587 并 STARTTLS 升级"]
+async fn live_smtp_starttls_reaches_server_rejection() {
+    let err = match send_mail(&QQ_SMTP_587, FAKE_USER, FAKE_SECRET, &probe_mail()).await {
+        Ok(()) => panic!("伪造凭证不应投递成功"),
+        Err(e) => e,
+    };
+    expect_protocol_rejection(&err, "SMTP 587 STARTTLS 升级");
+}

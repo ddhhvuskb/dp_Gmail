@@ -41,6 +41,22 @@
 两轮检索都没找到覆盖它们的权威页面。按 `AGENTS.md`「不猜」，这些留空待补，
 **宁可表里少几项，也不填一个可能连不上的地址**。
 
+### 2.4 STARTTLS 支持情况（2026-10-17 实测，非文档转述）
+
+加新服务商时**必须实测**这一项 —— 端口号相同的两个服务商，STARTTLS 支持可能相反：
+
+| 服务商 | IMAP 143 STARTTLS | 实测证据 |
+| --- | --- | --- |
+| QQ | ❌ **不支持** | 发 `STARTTLS` 回 `* BAD Command!` |
+| 网易 163 | ✅ 支持 | 回 `a1 OK Begin TLS negotiation`，升级后 TLSv1.3 |
+
+**结论：`ProviderConfig.imap_tls` 不能按「143 就是 STARTTLS」推断。**
+QQ 若误配 `TlsMode::StartTls` 会直接失败。
+
+SMTP 侧：QQ 465 隐式 ✅ / 587 STARTTLS ✅，两条均实测可用。
+
+实测脚本与结果见 `live-network-verification.md` §2.2。
+
 ---
 
 ## 3. 第二个前提：网易 163/126 需要 IMAP `ID` 命令

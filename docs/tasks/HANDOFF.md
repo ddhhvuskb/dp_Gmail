@@ -1,14 +1,17 @@
 # 交接说明
 
 > **给下一个会话/开发者。** 本文件是接手入口，读完它再读 `STATUS.md`。
-> 最后更新：2026-10-16（第 36 轮）
+> 最后更新：2026-10-16（第 38 轮，新增真实网络连接层验证）
 
 ---
 
 ## 1. 一句话现状
 
 **P0、P1、P2 三个阶段全部收口，193 个测试全绿，应用能跑。**
-**但核心网络路径（收信 / 发信）从未真实执行过一次。**
+**网络连接层已于 2026-10-16 真实验证** —— TLS 握手、证书校验、问候语解析、
+`CAPABILITY`、SMTP `EHLO`/`AUTH` 协商都已在 QQ / 163 真实服务器上跑通。
+**但邮箱层（`SELECT`/`FETCH`）与投递层（`DATA`）仍未执行：
+客户端至今没有收发过一封真实邮件。**
 
 ---
 
@@ -32,19 +35,41 @@
 | P0-01~08 | 服务商识别、IMAP 连接、MIME 解析、HTML 净化、SQLite 表、Tauri 命令、账户界面、邮件列表+详情、凭证加密、CI |
 | P1 | FTS5 全文检索（trigram + LIKE 回退）、多账户 + 统一收件箱、搜索界面 |
 | P2 | 发信全链路：纯文本 / HTML / 附件 / STARTTLS + 写信界面 + 回复转发 |
-| 额外 | IMAP 侧 STARTTLS、网易 `ID` 命令、163 服务商、性能实测、真实数据实跑、XSS 端到端验证 |
+| 额外 | IMAP 侧 STARTTLS、网易 `ID` 命令、163 服务商、性能实测、真实数据实跑、XSS 端到端验证、**真实网络连接层验证**（`live-network-verification.md`） |
 
 ---
 
 ## 4. 必须知道的两个阻塞
 
-### 4.1 QQ 授权码（硬阻塞）
+### 4.1 QQ 授权码（仍是最大风险来源，但**连接层已不再空白**）
 
-**这是最大的风险来源。** `fetch_recent` 与 `send_mail` 合计约 150 行网络代码，
-**零真实执行** —— TLS 握手、AUTH、DATA、IMAP SELECT/FETCH 全都没跑过。
+> **2026-10-16 更新。** 下面的「零真实执行」说法**已作废** ——
+> 验证连接层根本不需要授权码：用伪造凭证登录、断言错误落在协议层即可。
+> 4 条建连路径已全部连上真实服务器，见 `live-network-verification.md`。
 
-现有测试只覆盖到：参数校验、校验顺序、MIME 组装、附件读写、超时分支、问候语校验。
-**没有任何一次真实握手。**
+已真实跑通（4/4）：
+
+| 路径 | 服务器实际回话 |
+| --- | --- |
+| `imap.qq.com:993` 隐式 TLS → 问候语 → `CAPABILITY` → `LOGIN` | `Login fail. Please input email address` |
+| `imap.163.com:143` 明文 → `STARTTLS` → TLS → `LOGIN` | `LOGIN Login error or password error` |
+| `smtp.qq.com:465` 隐式 TLS → `EHLO` → `AUTH` | `535 Login fail. …` |
+| `smtp.qq.com:587` `STARTTLS` → TLS → `AUTH` | `535 Login fail. …` |
+
+即 **TLS 握手、证书校验、问候语解析、`CAPABILITY`、SMTP 能力协商均已确认真实可用**：
+
+```text
+cargo test --manifest-path src-tauri/Cargo.toml --test live_network_test -- --ignored --nocapture
+```
+
+**但客户端仍然没有收发过一封真实邮件**，授权码仍卡住这些：
+
+| 仍未验证 | 为什么 |
+| --- | --- |
+| `SELECT` / `FETCH` / `fetch_recent` | 会话未建立，邮箱层零执行 |
+| SMTP `DATA` 阶段 | 认证先失败，报文从未上线 |
+| 网易 `ID` 命令 | 它在 `login` **成功之后**才调用 ⇒ 本次完全没执行到 |
+| 端到端回复、真实投递与呈现 | 同上 |
 
 获取方式：mail.qq.com → 设置 → 账户 → 开启 IMAP/SMTP 服务 → 生成 16 位授权码。
 
