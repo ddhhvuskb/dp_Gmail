@@ -28,6 +28,23 @@ function listTitle(mode: ListMode): string {
   }
 }
 
+/**
+ * 列表为空时的提示。
+ *
+ * 必须区分「搜不到」与「文件夹没邮件」：两者都渲染空白中栏的话，
+ * 用户分不清是没结果、还在加载、还是界面坏了。
+ */
+function emptyHint(mode: ListMode): string {
+  switch (mode.kind) {
+    case "search":
+      return `没有匹配「${mode.query}」的邮件。`;
+    case "unified":
+      return "统一收件箱里还没有邮件，先同步一个文件夹。";
+    default:
+      return "这个文件夹里还没有邮件，先同步一次。";
+  }
+}
+
 export default function App() {
   const accounts = useAccounts();
   const accountId = useSelection((state) => state.accountId);
@@ -75,7 +92,10 @@ export default function App() {
         {mode.kind === "none" && <p className="app__hint">同步一个文件夹，或点「统一收件箱」。</p>}
         {mode.kind !== "none" && rows.isPending && <p className="app__hint">读取邮件…</p>}
         {rows.isError && <p className="app__error">{String(rows.error)}</p>}
-        {rows.data && (
+        {mode.kind !== "none" && rows.data?.length === 0 && (
+          <p className="app__hint">{emptyHint(mode)}</p>
+        )}
+        {rows.data && rows.data.length > 0 && (
           <MessageList rows={rows.data} selectedId={messageId} onSelect={selectMessage} />
         )}
       </section>
