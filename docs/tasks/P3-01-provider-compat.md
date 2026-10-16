@@ -24,7 +24,7 @@
 | QQ 邮箱 | `imap.qq.com:993` | `smtp.qq.com:465` | QQ 官方帮助页（P0-01 已核实） |
 | 网易 163 | `imap.163.com:993` | `smtp.163.com:465` | [Zoho 汇总表](https://zdblogs.zoho.com.cn/mail/articles/pop513.html) |
 
-### 2.2 企业邮箱（**无法**用域名自动识别，见 §3）
+### 2.2 企业邮箱（**无法**用域名自动识别，见 §4）
 
 来源：<https://www.west.cn/faq/listagent.asp?unid=2132>（企业邮箱 POP/SMTP/IMAP 汇总表）
 
@@ -43,7 +43,56 @@
 
 ---
 
-## 3. 关键发现：企业邮箱用客户自己的域名
+## 3. 第二个前提：网易 163/126 需要 IMAP `ID` 命令
+
+把 163 加进服务商表**不是加一行数据那么简单**。
+
+网易（163 / 126）在 `LOGIN` 之后、`SELECT` 之前要求客户端发送 IMAP `ID` 命令
+（RFC 2971）。不发的话 `SELECT` 会被拒：
+
+```
+SELECT Unsafe Login. Please contact kefu@188.com for help
+```
+
+多个独立来源证实了这一点：
+
+- [mcp-email-server#85](https://github.com/Wh1isper/mcp-email-server/issues/85)：
+  「SELECT Unsafe Login due to IMAP ID command format」
+- [hermes-agent#22271](https://github.com/NousResearch/hermes-agent/issues/22271)：
+  「Missing IMAP ID extension support」
+- [zeroclaw#2235](https://github.com/zeroclaw-labs/zeroclaw/issues/2235)：
+  明确要求为 NetEase 邮箱增加 IMAP ID 支持
+
+### 3.1 影响
+
+| 项 | 说明 |
+| --- | --- |
+| 症状 | 连得上、登录成功，**但一读邮件就报 `Unsafe Login`** |
+| 误判风险 | 极易被当成"密码错了"或"163 不支持 IMAP"而放弃 |
+| 范围 | 163.com、126.com、yeah.net（网易系全部） |
+| 不适用 | QQ 邮箱不需要（现有实现正确） |
+
+### 3.2 可用的实现路径（已核实）
+
+`async-imap` 未提供 `ID` 的专用方法，但具备实现条件：
+
+| 需要的能力 | 现状 |
+| --- | --- |
+| 读取服务器能力列表 | `Session::capabilities()` |
+| 识别未知能力（含 `ID`） | `Capability::Atom(String)`（`capabilities.rs:24`）—— `ID` 会以 `Atom("ID")` 出现 |
+| 发送原始命令 | `run_command_and_check_ok("ID (…)", None)` |
+
+正确做法是**先探测再发送**：`hermes-agent` 的修复提交
+（[6afec11](https://github.com/NousResearch/hermes-agent/commit/6afec11fb8bb1378ac3d030d495b702501973e16)）
+用的就是「仅在服务器声明该能力时才发 ID」。
+无条件发送会给不支持的服务器制造无谓的失败。
+
+> 注意：`ID` 命令的参数格式本身也有讲究（#85 的标题就是 "ID command format"），
+> 具体参数需在真机上试。**这又是一处必须真机验证的地方。**
+
+---
+
+## 4. 关键发现：企业邮箱用客户自己的域名
 
 上表三项**全部是企业邮箱**，它们的特点是：
 
@@ -74,7 +123,7 @@ pub fn resolve_by_email(email: &str) -> Option<&'static ProviderConfig> {
 
 ---
 
-## 4. 由此产生的设计问题（需用户决策）
+## 5. 由此产生的设计问题（需用户决策）
 
 `DESIGN.md` P0-05 定的是「服务商自动识别」。企业邮箱无法自动识别，
 只有两条路：
@@ -89,7 +138,6 @@ pub fn resolve_by_email(email: &str) -> Option<&'static ProviderConfig> {
 - 代价：P0-05 的「自动识别」在企业邮箱场景降级为「手动选择」。
 
 ### 方案 B：域名探测（猜）
-
 对未知域名尝试 `imap.<domain>` / `mail.<domain>` 等常见命名并连接探测。
 
 - **明确不建议**：这是拿用户的密码去戳一个未知服务器。
@@ -101,18 +149,19 @@ pub fn resolve_by_email(email: &str) -> Option<&'static ProviderConfig> {
 
 ---
 
-## 5. 尚未完成
+## 6. 尚未完成
 
 | 项 | 状态 |
 | --- | --- |
 | 免费个人邮箱地址核实 | 🟨 163 已核实；126 / yeah.net / sina.com / 139 / 189 未找到权威来源 |
+| 网易 IMAP `ID` 命令支持 | ⬜ 未实现（见 §3） |
 | 企业邮箱的手动选择 UI | ⬜ 待方案确定 |
 | OAuth（P3 后半） | ⬜ 未开始 |
 | IMAP 侧 STARTTLS | ✅ 已完成（见 `P2-01-smtp-send.md` 与 `imap_client.rs`） |
 
 ---
 
-## 6. 本轮为何不写代码
+## 7. 本轮为何不写代码
 
 按 `AGENTS.md` 硬性规则第 6 条「不写占位代码」：
 在方案未定前写 `provider.rs` 的扩展，只能写出一个**无法通过自动识别命中**的表 ——
