@@ -138,6 +138,36 @@ Select-String -Path "docs\tasks\*.md" -Pattern '^## '
 
 ---
 
+## 工具注意事项（Windows / PowerShell 5.1）
+
+本会话在这两点上各栽过两次，务必遵守：
+
+### 1. 不要用 PowerShell 改 UTF-8 源码或文档
+
+`Set-Content -Encoding UTF8` 在 PowerShell 5.1 下会把中文写成乱码。
+**改源码一律用 `edit` / `write` 工具**，不要用 shell 重定向或 `Set-Content`。
+
+### 2. 不要用 PowerShell 的 grep 结果判断文件是否损坏
+
+PowerShell 5.1 的控制台以 GBK 解码，**读取 UTF-8 文件时中文必然显示为乱码**，
+即使文件完全正常。本会话因此差点去"修"一个没坏的文件。
+
+判据：
+
+| 现象 | 结论 |
+| --- | --- |
+| `Select-String` 输出乱码 | ⚠️ **可能只是显示问题**，用 `read` 工具复核 |
+| `cargo check` 报 `unknown start of token: \u{e1e4}` | ⛔ 文件真的坏了 |
+
+**要确认文件内容，用 `read` 工具，不要看 PowerShell 的输出。**
+
+### 3. 提交信息用文件传递
+
+提交信息里含双引号时，PowerShell 的原生命令参数传递会被破坏。
+一律写成 UTF-8 文件后 `git commit -F <文件>`。
+
+---
+
 ## 绝对禁止
 
 | 禁止项 | 原因 |
