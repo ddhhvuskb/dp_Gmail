@@ -289,6 +289,127 @@ body,
   flex-shrink: 0;
 }
 
+.message-row__source {
+  color: var(--muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 搜索框 ─────────────────────────────────── */
+
+.search-box {
+  display: flex;
+  gap: 6px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--border);
+}
+
+.search-box input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font: inherit;
+}
+
+.search-box .button {
+  padding: 6px 12px;
+}
+
+.search-box__clear {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  cursor: pointer;
+}
+
+.app__list-title {
+  margin: 0;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--border);
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── 文件夹树 ───────────────────────────────── */
+
+.folder-tree {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.folder-tree__group {
+  margin-top: 6px;
+}
+
+.folder-tree__account {
+  margin: 0 0 2px;
+  color: var(--muted);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-tree__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 5px 8px;
+  border: none;
+  border-radius: 5px;
+  background: none;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.folder-tree__item:hover {
+  background: #eceff3;
+}
+
+.folder-tree__item--active {
+  background: #e8f0fe;
+  font-weight: 600;
+}
+
+.folder-tree__item--unified {
+  margin-bottom: 4px;
+}
+
+.folder-tree__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folder-tree__counts {
+  display: flex;
+  gap: 6px;
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+.folder-tree__unread {
+  color: #fff;
+  background: var(--accent);
+  border-radius: 8px;
+  padding: 0 6px;
+}
+
+.folder-tree__total {
+  color: var(--muted);
+}
+
 /* ── 详情 ───────────────────────────────────── */
 
 .message-detail__header h2 {

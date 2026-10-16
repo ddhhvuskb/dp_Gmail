@@ -71,6 +71,32 @@ export interface ProviderView {
   smtp_port: number;
 }
 
+export interface FolderRecord {
+  id: number;
+  account_id: number;
+  name: string;
+  uid_validity: number | null;
+  last_sync_at: number | null;
+  message_count: number;
+  unread_count: number;
+}
+
+/** 统一收件箱的行：在 `MessageSummary` 之上补出来源账户与文件夹。 */
+export interface UnifiedMessageSummary {
+  id: number;
+  uid: number;
+  folder_id: number;
+  folder_name: string;
+  account_id: number;
+  account_email: string;
+  subject: string | null;
+  from_name: string | null;
+  from_address: string | null;
+  date_unix: number;
+  is_seen: boolean;
+  attachment_count: number;
+}
+
 export const api = {
   listAccounts: () => invoke<AccountView[]>("list_accounts"),
 
@@ -84,8 +110,29 @@ export const api = {
       displayName: displayName ?? null,
     }),
 
+  /** `accountId` 传 `null` 即列出全部账户的文件夹。 */
+  listFolders: (accountId: number | null) =>
+    invoke<FolderRecord[]>("list_folders", { accountId }),
+
   getMessages: (folderId: number, limit: number, offset: number) =>
     invoke<MessageSummary[]>("get_messages", { folderId, limit, offset }),
+
+  /** 统一收件箱。`mailbox` 传 `"INBOX"` 即各账户收件箱合并。 */
+  listUnifiedMessages: (
+    accountId: number | null,
+    mailbox: string | null,
+    limit: number,
+    offset: number,
+  ) =>
+    invoke<UnifiedMessageSummary[]>("list_unified_messages", {
+      accountId,
+      mailbox,
+      limit,
+      offset,
+    }),
+
+  searchMessages: (query: string, limit: number) =>
+    invoke<MessageSummary[]>("search_messages", { query, limit }),
 
   getMessage: (messageId: number) => invoke<MessageView>("get_message", { messageId }),
 

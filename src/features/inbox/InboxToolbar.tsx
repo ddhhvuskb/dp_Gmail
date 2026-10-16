@@ -23,14 +23,15 @@ export default function InboxToolbar({ accounts }: Props) {
 
   const accountId = useSelection((state) => state.accountId);
   const setAccount = useSelection((state) => state.setAccount);
-  const setFolder = useSelection((state) => state.setFolder);
+  const showFolder = useSelection((state) => state.showFolder);
   const queryClient = useQueryClient();
 
   const sync = useMutation({
     mutationFn: () => api.syncFolder(accountId as number, mailbox, SYNC_BATCH),
     onSuccess: async (report) => {
-      setFolder(report.folder_id);
-      await queryClient.invalidateQueries({ queryKey: ["messages"] });
+      showFolder(report.folder_id, mailbox);
+      await queryClient.invalidateQueries({ queryKey: ["list"] });
+      await queryClient.invalidateQueries({ queryKey: ["folders"] });
     },
   });
 

@@ -6,4 +6,5 @@
 pub mod accounts;
 pub mod folders;
 pub mod messages;
+pub mod search;
 pub mod sync;
