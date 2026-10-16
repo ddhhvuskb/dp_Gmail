@@ -84,3 +84,46 @@ async fn times_out_when_server_never_speaks_tls() {
         started.elapsed()
     );
 }
+
+#[tokio::test]
+async fn reports_missing_greeting_instead_of_waiting_for_timeout() {
+    // `read_greeting` 的**错误分支**此前没有任何覆盖 —— 上面两条用例
+    // 走的是「超时」与「会去建连」，都没碰到「服务器不发问候语」。
+    //
+    // 这条无需证书：STARTTLS 模式的初始连接是**明文**，
+    // 假服务器接受连接后立刻关闭，不发送任何字节。
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let port = listener.local_addr().unwrap().port();
+
+    tokio::spawn(async move {
+        let (stream, _) = listener.accept().await.unwrap();
+        drop(stream); // 立刻关闭，一个字节都不发
+    });
+
+    let host: &'static str = Box::leak("127.0.0.1".to_owned().into_boxed_str());
+    let cfg = ProviderConfig {
+        imap_host: host,
+        imap_port: port,
+        imap_tls: TlsMode::StartTls,
+        ..PROVIDERS[0]
+    };
+
+    let started = Instant::now();
+    let err = connect_and_login(&cfg, "user@qq.com", "secret")
+        .await
+        .expect_err("流在问候语之前结束，应报错");
+
+    assert!(
+        matches!(err, MailError::Io(_)),
+        "应是 IO 错误（问候语缺失），实际：{err:?}"
+    );
+    assert!(
+        err.to_string().contains("问候语"),
+        "错误信息应说明是问候语问题，实际：{err}"
+    );
+    assert!(
+        started.elapsed() < Duration::from_secs(IMAP_TIMEOUT_SECS),
+        "服务器已关闭连接，不该白等到超时，耗时 {:?}",
+        started.elapsed()
+    );
+}
