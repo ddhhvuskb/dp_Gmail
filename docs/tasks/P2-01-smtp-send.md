@@ -17,7 +17,7 @@
 | P2-01d | `commands::compose::send_mail`（解密凭证 → 投递） | ✅ |
 | P2-01e | 写信界面 + 回复/转发 | ✅ |
 | P2-01g | 附件选择器（`@tauri-apps/plugin-dialog`） | ✅ |
-| P2-01f | STARTTLS（587）支持 | ⬜ |
+| P2-01f | STARTTLS（587）支持 | ✅ |
 
 ## 2. 接口契约
 
@@ -81,7 +81,31 @@ pub fn build_message(mail: &OutgoingMail) -> Result<Message, MailError>;
 | `cargo fmt --check` / `cargo clippy -D warnings` | exit 0 ✅ |
 | `cargo test --test smtp_send_test` | **18/18 通过**（0.00s，未触网）✅ |
 | `cargo test --test compose_test` | **11/11 通过** ✅ |
-| 全量测试 | **183/183 通过** ✅ |
+| `cargo test --test smtp_send_test` | **19/19 通过** ✅ |
+| 全量测试 | **184/184 通过** ✅ |
+
+### 4.6 STARTTLS（P2-01f）
+
+`send_mail` 按 `ProviderConfig.smtp_tls` 分支：
+
+```rust
+let builder = match cfg.smtp_tls {
+    TlsMode::Implicit  => AsyncSmtpTransport::relay(cfg.smtp_host)?,          // 465
+    TlsMode::StartTls  => AsyncSmtpTransport::starttls_relay(cfg.smtp_host)?, // 587
+};
+```
+
+原先那条 `UnsupportedTlsMode("SMTP STARTTLS")` 的早退已删除。
+
+**原来的用例被替换而不是删除**：`rejects_non_implicit_smtp_tls` 改成了两条
+`starttls_mode_still_*` —— 它们验证「换到 STARTTLS 路径后，**校验仍然排在建连之前**」。
+若哪天有人在 StartTls 分支前面插了建连代码，这两条会因真去连 `smtp.qq.com` 而变慢，
+从而暴露顺序问题。**删掉旧用例会丢掉这层保护，替换成新用例才能留住它。**
+
+> IMAP 侧的 STARTTLS **尚未实现**：`connect_and_login` 仍对 `TlsMode::StartTls` 返回
+> `UnsupportedTlsMode`。IMAP 的 STARTTLS 需要「明文建连 → 发 STARTTLS 命令 →
+> 取出裸流 → 套 TLS → 重新构造 Client」五步，与 SMTP 一行搞定不同。
+> QQ 用的是 993 隐式 TLS，故这不影响 P0 目标；属 P3（国内邮箱兼容层）范围。
 
 ### 4.4 命令层：附件为什么传路径而不是字节
 

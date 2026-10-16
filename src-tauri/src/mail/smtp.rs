@@ -53,16 +53,19 @@ pub async fn send_mail(
     secret: &str,
     mail: &OutgoingMail,
 ) -> Result<(), MailError> {
-    if cfg.smtp_tls != TlsMode::Implicit {
-        return Err(MailError::UnsupportedTlsMode("SMTP STARTTLS"));
-    }
     if mail.to.is_empty() {
         return Err(MailError::NoRecipients);
     }
 
     let email = build_message(mail)?;
 
-    let transport = AsyncSmtpTransport::<Tokio1Executor>::relay(cfg.smtp_host)?
+    // 465 隐式 TLS 与 587 STARTTLS 是两条不同的建连路径，由 provider 表决定走哪条。
+    let builder = match cfg.smtp_tls {
+        TlsMode::Implicit => AsyncSmtpTransport::<Tokio1Executor>::relay(cfg.smtp_host)?,
+        TlsMode::StartTls => AsyncSmtpTransport::<Tokio1Executor>::starttls_relay(cfg.smtp_host)?,
+    };
+
+    let transport = builder
         .port(cfg.smtp_port)
         .timeout(Some(Duration::from_secs(SMTP_TIMEOUT_SECS)))
         .credentials(Credentials::new(user.to_owned(), secret.to_owned()))

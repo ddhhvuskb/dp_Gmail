@@ -30,22 +30,36 @@ async fn rejects_empty_recipients() {
 }
 
 #[tokio::test]
-async fn rejects_non_implicit_smtp_tls() {
+async fn starttls_mode_still_validates_before_touching_the_network() {
+    // STARTTLS（587）与隐式 TLS（465）是两条不同的建连路径。
+    // 这条用例验证：换到 StartTls 后**校验仍然排在建连之前** ——
+    // 若顺序被破坏，本测试会因真去连 smtp.qq.com 而变慢甚至超时。
     let cfg = ProviderConfig {
         smtp_tls: TlsMode::StartTls,
         ..PROVIDERS[0]
     };
 
-    let err = send_mail(
-        &cfg,
-        "a@qq.com",
-        "secret",
-        &draft("a@qq.com", &["b@qq.com"]),
-    )
-    .await
-    .expect_err("STARTTLS 尚未实现，应返回错误");
+    let err = send_mail(&cfg, "a@qq.com", "secret", &draft("@@@", &["b@qq.com"]))
+        .await
+        .expect_err("非法发件人应被拒");
     assert!(
-        matches!(err, MailError::UnsupportedTlsMode("SMTP STARTTLS")),
+        matches!(err, MailError::BadAddress(_)),
+        "STARTTLS 路径下也应在解析阶段就拒绝非法地址，实际：{err:?}"
+    );
+}
+
+#[tokio::test]
+async fn starttls_mode_still_rejects_empty_recipients() {
+    let cfg = ProviderConfig {
+        smtp_tls: TlsMode::StartTls,
+        ..PROVIDERS[0]
+    };
+
+    let err = send_mail(&cfg, "a@qq.com", "secret", &draft("a@qq.com", &[]))
+        .await
+        .expect_err("空收件人应被拒");
+    assert!(
+        matches!(err, MailError::NoRecipients),
         "错误类型不符：{err:?}"
     );
 }

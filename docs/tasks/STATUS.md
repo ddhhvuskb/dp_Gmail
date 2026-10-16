@@ -152,7 +152,7 @@ P0-05 落地后它已不成立，容易误导使用者。已改为「先在左�
 | `search_store_test` | 12 |
 | `unified_inbox_test` | 13 |
 | `performance_test` | 7 |
-| `smtp_send_test` | 18 |
+| `smtp_send_test` | 19 |
 | `compose_test` | 11 |
 | `message_detail_test` | 5 |
 | `list_accounts_test` | 5 |
@@ -228,14 +228,14 @@ src/
 | P1-01 | **FTS5 全文检索**（schema v3 + `search_messages`） | ✅ 12/12 + 5/5 |
 | P1-02 | **多账户 + 统一收件箱**（`list_folders` / `list_unified_messages`） | ✅ 后端 13/13 |
 | P1-03 | **搜索界面 + 统一收件箱界面**（文件夹树 / 搜索框 / ListMode） | ✅ 已实跑验证 |
-| P2-01a~e,g | **发信全链路**（后端 + 命令 + 写信/回复/转发 + 附件选择） | ✅ |
-| P2-01f | STARTTLS（587） | ⬜ |
+| P2-01 | **发信全链路**（后端 + 命令 + 界面 + 附件 + STARTTLS） | ✅ **P2 后端全部收口** |
+| P2 剩余 | IMAP 侧 STARTTLS（属 P3 范畴；QQ 用 993 隐式 TLS，不影响 P0） | ⬜ |
 | P3 | 国内邮箱兼容层 + OAuth | ⬜ |
 | P4 | UI 打磨 + 可选 AI 摘要/待办提取 | ⬜ |
 
 ### P1 完成度：**3/3 全部落地**
 
-### 累计测试：**183 全绿**
+### 累计测试：**184 全绿**
 
 ### 依赖记录
 
