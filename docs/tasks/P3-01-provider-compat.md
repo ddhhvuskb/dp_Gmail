@@ -17,6 +17,15 @@
 
 ## 2. 已核实的服务器地址
 
+### 2.1 个人邮箱（可用域名自动识别）
+
+| 服务商 | IMAP | SMTP | 来源 |
+| --- | --- | --- | --- |
+| QQ 邮箱 | `imap.qq.com:993` | `smtp.qq.com:465` | QQ 官方帮助页（P0-01 已核实） |
+| 网易 163 | `imap.163.com:993` | `smtp.163.com:465` | [Zoho 汇总表](https://zdblogs.zoho.com.cn/mail/articles/pop513.html) |
+
+### 2.2 企业邮箱（**无法**用域名自动识别，见 §3）
+
 来源：<https://www.west.cn/faq/listagent.asp?unid=2132>（企业邮箱 POP/SMTP/IMAP 汇总表）
 
 | 服务商 | IMAP | SMTP |
@@ -25,8 +34,12 @@
 | 网易企业邮 | `imap.qiye.163.com:993` | `smtp.qiye.163.com:994` |
 | 阿里云企业邮箱（原万网） | `imap.mxhichina.com:993` | `smtp.mxhichina.com:465` |
 
-该页**未覆盖**免费个人邮箱（163 / 126 / yeah.net / sina.com 等），
-那部分地址尚未核实，**不得凭记忆填入**。
+### 2.3 仍未核实（**不得凭记忆填入**）
+
+`126.com`、`yeah.net`（网易系其它域名）、`sina.com`、`139.com`、`189.cn`、`aliyun.com`。
+
+两轮检索都没找到覆盖它们的权威页面。按 `AGENTS.md`「不猜」，这些留空待补，
+**宁可表里少几项，也不填一个可能连不上的地址**。
 
 ---
 
@@ -92,10 +105,10 @@ pub fn resolve_by_email(email: &str) -> Option<&'static ProviderConfig> {
 
 | 项 | 状态 |
 | --- | --- |
-| 免费个人邮箱地址核实（163 / 126 / yeah.net / sina.com） | ⬜ 未核实 |
+| 免费个人邮箱地址核实 | 🟨 163 已核实；126 / yeah.net / sina.com / 139 / 189 未找到权威来源 |
 | 企业邮箱的手动选择 UI | ⬜ 待方案确定 |
 | OAuth（P3 后半） | ⬜ 未开始 |
-| IMAP 侧 STARTTLS | ⬜ 未实现（见 `P2-01-smtp-send.md` §4.6） |
+| IMAP 侧 STARTTLS | ✅ 已完成（见 `P2-01-smtp-send.md` 与 `imap_client.rs`） |
 
 ---
 
