@@ -49,9 +49,10 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | P0-07c | `accounts.secret_encrypted` + schema 迁移 + 账户读写 | ✅ | `cargo test --test schema_migration_test`、`account_store_test` | **5/5 + 6/6** |
 | P0-07d | `commands::add_account`（原 P0-04） | ✅ | `cargo test --test add_account_test` | **7/7** |
 | P0-07e | `commands::sync_folder`（原 P0-04d） | ✅ | `cargo test --test sync_support_test` | **11/11**；IMAP 段待真机联调 |
+| P0-06 | 邮件列表 + 详情（虚拟滚动，HTML 净化） | ✅ | `tsc --noEmit` + `cargo test` | **5/5 + 5/5**；UI 未在真实窗口跑过 |
 | P0-08 | CI 构建 Windows x64 + ARM64 | ⬜ | workflow 语法校验 | — |
 
-### 累计测试：**101 全绿**
+### 累计测试：**111 全绿**
 
 | 测试目标 | 用例数 |
 | --- | --- |
@@ -70,6 +71,10 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | `account_store_test` | 6 |
 | `add_account_test` | 7 |
 | `sync_support_test` | 11 |
+| `message_detail_test` | 5 |
+| `list_accounts_test` | 5 |
+
+**前端**：`tsc --noEmit` exit 0；`npm run build` exit 0。
 
 ---
 
@@ -107,11 +112,22 @@ src-tauri/
         └── mod.rs           open_database
 ```
 
-前端（最小壳子，P0-05 起填充）：
+前端（P0-06 完成）：
 
 ```
-package.json  vite.config.ts  tsconfig.json  index.html
-src/main.tsx  src/App.tsx  src/vite-env.d.ts
+src/
+├── main.tsx                 QueryClientProvider + StrictMode
+├── App.tsx                  三栏外壳
+├── App.css
+├── lib/
+│   ├── api.ts               Tauri 命令类型化封装（camelCase 载荷）
+│   └── format.ts            日期 / 字节 / 发件人格式化
+├── stores/selection.ts      Zustand：账户 / 文件夹 / 邮件选择
+└── features/inbox/
+    ├── useInbox.ts          TanStack Query hooks
+    ├── InboxToolbar.tsx     账户选择 + 信箱名 + 同步
+    ├── MessageList.tsx      虚拟滚动列表
+    └── MessageDetail.tsx    详情（净化后 HTML）
 ```
 
 ---
@@ -167,3 +183,4 @@ P0-08 CI（无依赖，可随时做）
 | 2026-10-16 | **P0-07c 完成**：`accounts.secret_encrypted` + `PRAGMA user_version` 迁移机制 |
 | 2026-10-16 | **P0-07d `add_account` 完成**；`provider::find_by_id` 补齐 `sync_folder` 的前置 |
 | 2026-10-16 | **P0-07e `sync_folder` 完成**：三段式编排规避 `MutexGuard` 跨 `.await`；`upsert_messages` 整批单事务 |
+| 2026-10-16 | **P0-06 完成**：`get_message` + `list_accounts` 命令；前端三栏界面、虚拟滚动列表、净化后渲染详情 |

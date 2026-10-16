@@ -121,6 +121,17 @@
 
 删除 `argon2`/`hkdf`/`keyring`、新增上述 8 项，均为 `Cargo.toml` 内的局部改动，不触及任何接口签名与表结构。用户可随时否决任意一项，届时按 `DESIGN.md` 第六章流程重走本 ADR。
 
+### 5.4 后续追加（均经用户批准）
+
+| 依赖 | 批准时间 | 理由 |
+| --- | --- | --- |
+| `@tanstack/react-virtual` 3.x | 2026-10-16 | P0-06 要求「虚拟滚动」，验收标准是「1000 封列表滚动不卡」。与前端的 TanStack Query 同家族，API 风格一致。备选是手写 windowing（零依赖但需自行处理变行高）与 `react-virtuoso`（开箱即用），用户选此。 |
+| `list_accounts` Tauri 命令 | 2026-10-16 | P0-05 账户配置界面需要展示已有账户，而原命令清单只有写入口。 |
+
+**注意**：`@tauri-apps/api` 的 `invoke` 默认按 **camelCase** 解析前端载荷
+（`tauri-macros` 的 `rename_all` 文档明确写了 "camelCase (default)"），
+故 `src/lib/api.ts` 里一律传 camelCase 键名，Rust 侧的 snake_case 参数由 Tauri 转换。
+
 ---
 
 ## 6. 决策：前端依赖基线
@@ -135,6 +146,7 @@
 | `@tanstack/react-query` | ≥5.0 | 服务端状态 / 缓存 |
 | `@tauri-apps/api` | 2 | 调用 Tauri Commands |
 | `@tauri-apps/cli` | 2 | 开发/构建 CLI |
+| `@tanstack/react-virtual` | 3.x | P0-06 虚拟滚动（2026-10-16 用户批准新增，见 §5.4） |
 
 ---
 

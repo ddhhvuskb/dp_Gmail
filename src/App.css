@@ -1,0 +1,244 @@
+/* 三栏布局：侧栏 | 邮件列表 | 详情。 */
+
+:root {
+  --border: #e2e5ea;
+  --muted: #6b7280;
+  --accent: #2563eb;
+  --bg-soft: #f7f8fa;
+  font-family: system-ui, "Microsoft YaHei", sans-serif;
+  font-size: 14px;
+  color: #1f2328;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+}
+
+.app {
+  display: grid;
+  grid-template-columns: 260px minmax(280px, 380px) 1fr;
+  height: 100%;
+}
+
+.app__sidebar {
+  border-right: 1px solid var(--border);
+  padding: 12px;
+  overflow-y: auto;
+  background: var(--bg-soft);
+}
+
+.app__title {
+  font-size: 16px;
+  margin: 4px 0 16px;
+}
+
+.app__list {
+  border-right: 1px solid var(--border);
+  overflow: hidden;
+  min-height: 0;
+}
+
+.app__detail {
+  overflow-y: auto;
+  padding: 16px 20px;
+}
+
+.app__hint {
+  color: var(--muted);
+  padding: 16px;
+}
+
+.app__error {
+  color: #b91c1c;
+  padding: 8px 4px;
+  word-break: break-all;
+}
+
+/* ── 工具条 ─────────────────────────────────── */
+
+.toolbar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.toolbar__field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.toolbar__field > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.toolbar__field select,
+.toolbar__field input {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+}
+
+.toolbar__action {
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.toolbar__action:disabled {
+  background: #b6c2d4;
+  cursor: not-allowed;
+}
+
+.toolbar__ok {
+  color: #15803d;
+  font-size: 12px;
+  margin: 0;
+}
+
+.toolbar__error {
+  color: #b91c1c;
+  font-size: 12px;
+  margin: 0;
+  word-break: break-all;
+}
+
+.toolbar__hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ── 邮件列表（虚拟滚动）───────────────────── */
+
+.message-list {
+  height: 100%;
+  overflow-y: auto;
+}
+
+/* 虚拟化容器：高度由 virtualizer.getTotalSize() 给出 */
+.message-list__inner {
+  position: relative;
+  width: 100%;
+}
+
+.message-row {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 12px;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  background: #fff;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.message-row:hover {
+  background: var(--bg-soft);
+}
+
+.message-row--selected {
+  background: #e8f0fe;
+}
+
+.message-row--unread .message-row__subject {
+  font-weight: 700;
+}
+
+.message-row__line {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.message-row__sender,
+.message-row__subject {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.message-row__date {
+  color: var(--muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.message-row__badge {
+  color: var(--muted);
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+/* ── 详情 ───────────────────────────────────── */
+
+.message-detail__header h2 {
+  margin: 0 0 8px;
+  font-size: 18px;
+}
+
+.message-detail__header dl {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 2px 10px;
+  margin: 0 0 12px;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.message-detail__header dt {
+  white-space: nowrap;
+}
+
+.message-detail__header dd {
+  margin: 0;
+  word-break: break-all;
+}
+
+.message-detail__attachments {
+  list-style: none;
+  padding: 8px 10px;
+  margin: 0 0 12px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: var(--bg-soft);
+  font-size: 13px;
+}
+
+.message-detail__size {
+  color: var(--muted);
+  margin-left: 8px;
+}
+
+.message-detail__body {
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+  overflow-wrap: anywhere;
+}
+
+.message-detail__body--text {
+  white-space: pre-wrap;
+  font-family: inherit;
+  margin: 0;
+}

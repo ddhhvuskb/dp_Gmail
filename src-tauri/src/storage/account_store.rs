@@ -86,3 +86,41 @@ pub fn load_account_credentials(
     .optional()
     .map_err(StorageError::from)
 }
+
+/// 账户摘要（**不含凭证**）。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AccountRecord {
+    pub id: i64,
+    pub email: String,
+    pub display_name: Option<String>,
+    pub provider_id: String,
+    /// 是否已存有加密凭证。只暴露布尔，**绝不暴露密文本身**。
+    pub has_secret: bool,
+}
+
+/// 列出全部账户，按创建顺序。
+///
+/// 用 `secret_encrypted IS NOT NULL` 在 SQL 里算出布尔值，
+/// 而不是把密文读出来再在 Rust 侧判空 —— 密文根本不该进入这一层之上。
+pub fn list_accounts(conn: &Connection) -> Result<Vec<AccountRecord>, StorageError> {
+    let mut stmt = conn.prepare(
+        "SELECT id, email, display_name, provider_id, secret_encrypted IS NOT NULL
+         FROM accounts ORDER BY id",
+    )?;
+
+    let rows = stmt.query_map([], |row| {
+        Ok(AccountRecord {
+            id: row.get(0)?,
+            email: row.get(1)?,
+            display_name: row.get(2)?,
+            provider_id: row.get(3)?,
+            has_secret: row.get::<_, i64>(4)? != 0,
+        })
+    })?;
+
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row?);
+    }
+    Ok(out)
+}

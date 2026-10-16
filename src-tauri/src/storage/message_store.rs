@@ -4,7 +4,7 @@
 //! `DESIGN.md` 第三章的调用方向是 `mail → storage`，storage 不应反向依赖 mail。
 //! 映射由 `mail` 层负责。
 
-use rusqlite::{params, Connection, Transaction};
+use rusqlite::{params, Connection, OptionalExtension, Transaction};
 
 use super::error::StorageError;
 
@@ -192,4 +192,83 @@ pub fn list_messages(
         out.push(row?);
     }
     Ok(out)
+}
+
+/// 附件元数据（详情面板展示用）。P0 阶段不取附件正文。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AttachmentMeta {
+    pub filename: String,
+    pub content_type: String,
+    pub size: i64,
+}
+
+/// 邮件详情。
+///
+/// `html_body` 是**未净化**的原始 HTML。本层不做净化 ——
+/// 净化属 `security` 的职责，且原始 HTML **绝不允许**直接交给前端渲染。
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MessageDetail {
+    pub id: i64,
+    pub uid: i64,
+    pub subject: Option<String>,
+    pub from_name: Option<String>,
+    pub from_address: Option<String>,
+    pub to_addresses: Option<String>,
+    /// Unix 秒。
+    pub date_unix: i64,
+    pub is_seen: bool,
+    pub text_body: Option<String>,
+    pub html_body: Option<String>,
+    pub attachments: Vec<AttachmentMeta>,
+}
+
+/// 读取单封邮件的完整内容。邮件不存在返回 `None`。
+pub fn load_message_detail(
+    conn: &Connection,
+    message_id: i64,
+) -> Result<Option<MessageDetail>, StorageError> {
+    let found = conn
+        .query_row(
+            "SELECT id, uid, subject, from_name, from_address, to_addresses,
+                    date_unix, is_seen, text_body, html_body
+             FROM messages WHERE id = ?1",
+            params![message_id],
+            |row| {
+                Ok(MessageDetail {
+                    id: row.get(0)?,
+                    uid: row.get(1)?,
+                    subject: row.get(2)?,
+                    from_name: row.get(3)?,
+                    from_address: row.get(4)?,
+                    to_addresses: row.get(5)?,
+                    date_unix: row.get(6)?,
+                    is_seen: row.get::<_, i64>(7)? != 0,
+                    text_body: row.get(8)?,
+                    html_body: row.get(9)?,
+                    attachments: Vec::new(),
+                })
+            },
+        )
+        .optional()?;
+
+    let Some(mut detail) = found else {
+        return Ok(None);
+    };
+
+    let mut stmt = conn.prepare(
+        "SELECT filename, content_type, size FROM attachments
+         WHERE message_id = ?1 ORDER BY id",
+    )?;
+    let rows = stmt.query_map(params![message_id], |row| {
+        Ok(AttachmentMeta {
+            filename: row.get(0)?,
+            content_type: row.get(1)?,
+            size: row.get(2)?,
+        })
+    })?;
+    for row in rows {
+        detail.attachments.push(row?);
+    }
+
+    Ok(Some(detail))
 }

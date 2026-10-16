@@ -1,0 +1,81 @@
+/**
+ * Tauri 命令的类型化封装。
+ *
+ * 这些接口与后端 Rust 结构体一一对应，**改动任何一侧都必须同步另一侧**：
+ * - `MessageSummary` ← `storage::message_store::MessageSummary`
+ * - `MessageView`    ← `commands::messages::MessageView`
+ * - `AccountView`    ← `commands::accounts::AccountView`
+ * - `SyncReport`     ← `commands::sync::SyncReport`
+ *
+ * 参数名用 camelCase：Tauri v2 的 `#[tauri::command]` 默认按 camelCase
+ * 解析前端载荷（见 `tauri-macros` 的 `rename_all` 文档）。
+ */
+
+import { invoke } from "@tauri-apps/api/core";
+
+export interface AttachmentView {
+  filename: string;
+  content_type: string;
+  size: number;
+}
+
+export interface MessageSummary {
+  id: number;
+  uid: number;
+  subject: string | null;
+  from_name: string | null;
+  from_address: string | null;
+  /** Unix 秒。 */
+  date_unix: number;
+  is_seen: boolean;
+  attachment_count: number;
+}
+
+export interface MessageView {
+  id: number;
+  uid: number;
+  subject: string | null;
+  from_name: string | null;
+  from_address: string | null;
+  to_addresses: string | null;
+  date_unix: number;
+  is_seen: boolean;
+  text_body: string | null;
+  /** 已由后端 `security::sanitize_html` 净化。 */
+  html_body: string | null;
+  attachments: AttachmentView[];
+}
+
+export interface AccountView {
+  id: number;
+  email: string;
+  display_name: string | null;
+  provider_id: string;
+  provider_name: string;
+  has_secret: boolean;
+}
+
+export interface SyncReport {
+  folder_id: number;
+  fetched: number;
+  stored: number;
+}
+
+export const api = {
+  listAccounts: () => invoke<AccountView[]>("list_accounts"),
+
+  addAccount: (email: string, secret: string, displayName?: string) =>
+    invoke<AccountView>("add_account", {
+      email,
+      secret,
+      displayName: displayName ?? null,
+    }),
+
+  getMessages: (folderId: number, limit: number, offset: number) =>
+    invoke<MessageSummary[]>("get_messages", { folderId, limit, offset }),
+
+  getMessage: (messageId: number) => invoke<MessageView>("get_message", { messageId }),
+
+  syncFolder: (accountId: number, mailbox: string, limit: number) =>
+    invoke<SyncReport>("sync_folder", { accountId, mailbox, limit }),
+};

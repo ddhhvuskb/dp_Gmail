@@ -14,12 +14,14 @@ pub mod message_store;
 pub mod schema;
 
 pub use account_store::{
-    create_account, load_account_credentials, load_encrypted_secret, AccountCredentials,
+    create_account, list_accounts, load_account_credentials, load_encrypted_secret,
+    AccountCredentials, AccountRecord,
 };
 pub use error::StorageError;
 pub use folder_store::ensure_folder;
 pub use message_store::{
-    list_messages, upsert_message, upsert_messages, MessageSummary, NewAttachment, NewMessage,
+    list_messages, load_message_detail, upsert_message, upsert_messages, AttachmentMeta,
+    MessageDetail, MessageSummary, NewAttachment, NewMessage,
 };
 pub use schema::{init_schema, SCHEMA_VERSION};
 

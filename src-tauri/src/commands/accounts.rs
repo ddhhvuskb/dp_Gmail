@@ -79,3 +79,37 @@ pub fn add_account(
         has_secret: true,
     })
 }
+
+/// 列出全部账户。
+///
+/// 服务商展示名由命令层补上（`storage` 不认识 `mail::provider`）。
+/// 遇到已下线的旧服务商标识时，展示名回退为标识本身而不是报错 ——
+/// 列表里少一个名字，总好过整页打不开。
+#[tauri::command]
+pub fn list_accounts(state: tauri::State<'_, AppState>) -> Result<Vec<AccountView>, String> {
+    let conn = state
+        .db
+        .lock()
+        .map_err(|err| format!("数据库连接不可用：{err}"))?;
+
+    let records = storage::list_accounts(&conn).map_err(|err| err.to_string())?;
+
+    Ok(records
+        .into_iter()
+        .map(|record| {
+            let provider_name = provider::find_by_id(&record.provider_id).map_or_else(
+                || record.provider_id.clone(),
+                |cfg| cfg.display_name.to_owned(),
+            );
+
+            AccountView {
+                id: record.id,
+                email: record.email,
+                display_name: record.display_name,
+                provider_id: record.provider_id,
+                provider_name,
+                has_secret: record.has_secret,
+            }
+        })
+        .collect())
+}
