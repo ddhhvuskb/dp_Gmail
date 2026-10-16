@@ -272,3 +272,74 @@ pub fn load_message_detail(
 
     Ok(Some(detail))
 }
+
+/// 统一收件箱用的摘要：在 [`MessageSummary`] 之上补出来源信息。
+///
+/// 跨文件夹聚合时「这封信属于哪个账户/文件夹」是必需信息，
+/// 而 [`MessageSummary`] 里没有 —— 故单独一个 DTO，而不是去改既有结构。
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct UnifiedMessageSummary {
+    pub id: i64,
+    pub uid: i64,
+    pub folder_id: i64,
+    pub folder_name: String,
+    pub account_id: i64,
+    pub account_email: String,
+    pub subject: Option<String>,
+    pub from_name: Option<String>,
+    pub from_address: Option<String>,
+    /// Unix 秒。
+    pub date_unix: i64,
+    pub is_seen: bool,
+    pub attachment_count: i64,
+}
+
+/// 统一收件箱：跨文件夹（可再按账户、信箱名收窄）聚合邮件。
+///
+/// - `account_id = None`：全部账户
+/// - `mailbox = Some("INBOX")`：只看各账户的 INBOX；`None` 则不限文件夹
+///
+/// 两个过滤条件都用 `?N IS NULL OR …` 表达，一条 SQL 覆盖四种组合。
+pub fn list_unified_messages(
+    conn: &Connection,
+    account_id: Option<i64>,
+    mailbox: Option<&str>,
+    limit: u32,
+    offset: u32,
+) -> Result<Vec<UnifiedMessageSummary>, StorageError> {
+    let mut stmt = conn.prepare(
+        "SELECT m.id, m.uid, m.folder_id, f.name, f.account_id, a.email,
+                m.subject, m.from_name, m.from_address, m.date_unix, m.is_seen,
+                (SELECT COUNT(*) FROM attachments att WHERE att.message_id = m.id)
+         FROM messages m
+         JOIN folders  f ON f.id = m.folder_id
+         JOIN accounts a ON a.id = f.account_id
+         WHERE (?1 IS NULL OR f.account_id = ?1)
+           AND (?2 IS NULL OR f.name = ?2 COLLATE NOCASE)
+         ORDER BY m.date_unix DESC, m.id DESC
+         LIMIT ?3 OFFSET ?4",
+    )?;
+
+    let rows = stmt.query_map(params![account_id, mailbox, limit, offset], |row| {
+        Ok(UnifiedMessageSummary {
+            id: row.get(0)?,
+            uid: row.get(1)?,
+            folder_id: row.get(2)?,
+            folder_name: row.get(3)?,
+            account_id: row.get(4)?,
+            account_email: row.get(5)?,
+            subject: row.get(6)?,
+            from_name: row.get(7)?,
+            from_address: row.get(8)?,
+            date_unix: row.get(9)?,
+            is_seen: row.get::<_, i64>(10)? != 0,
+            attachment_count: row.get(11)?,
+        })
+    })?;
+
+    let mut out = Vec::new();
+    for row in rows {
+        out.push(row?);
+    }
+    Ok(out)
+}

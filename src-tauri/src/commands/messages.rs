@@ -105,3 +105,26 @@ pub fn get_message(
             .collect(),
     })
 }
+
+/// 统一收件箱：跨文件夹（可再按账户、信箱名收窄）分页读取邮件摘要。
+///
+/// - `account_id` 为 `null`：全部账户
+/// - `mailbox` 为 `null`：不限文件夹；传 `"INBOX"` 即各账户的收件箱合并
+#[tauri::command]
+pub fn list_unified_messages(
+    state: tauri::State<'_, AppState>,
+    account_id: Option<i64>,
+    mailbox: Option<String>,
+    limit: u32,
+    offset: u32,
+) -> Result<Vec<storage::UnifiedMessageSummary>, String> {
+    let (limit, offset) = normalize_paging(limit, offset);
+
+    let conn = state
+        .db
+        .lock()
+        .map_err(|err| format!("数据库连接不可用：{err}"))?;
+
+    storage::list_unified_messages(&conn, account_id, mailbox.as_deref(), limit, offset)
+        .map_err(|err| err.to_string())
+}

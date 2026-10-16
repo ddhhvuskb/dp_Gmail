@@ -134,6 +134,7 @@ P0-05 落地后它已不成立，容易误导使用者。已改为「先在左�
 | `sync_support_test` | 11 |
 | `fts5_capability_test` | 5 |
 | `search_store_test` | 12 |
+| `unified_inbox_test` | 13 |
 | `message_detail_test` | 5 |
 | `list_accounts_test` | 5 |
 | `resolve_provider_test` | 5 |
@@ -206,13 +207,13 @@ src/
 | 阶段 | 内容 | 状态 |
 | --- | --- | --- |
 | P1-01 | **FTS5 全文检索**（schema v3 + `search_messages`） | ✅ 12/12 + 5/5 |
-| P1-02 | 多账户 + 统一收件箱（跨账户/文件夹查询） | ⬜ |
-| P1-03 | 搜索界面 | ⬜ |
+| P1-02 | **多账户 + 统一收件箱**（`list_folders` / `list_unified_messages`） | 🟨 后端 13/13，前端待接 |
+| P1-03 | 搜索界面 + 统一收件箱界面 | ⬜ |
 | P2 | 写信/回复/转发 + SMTP + 附件 | ⬜ |
 | P3 | 国内邮箱兼容层 + OAuth | ⬜ |
 | P4 | UI 打磨 + 可选 AI 摘要/待办提取 | ⬜ |
 
-### 累计测试：**132 全绿**
+### 累计测试：**145 全绿**
 
 ---
 
@@ -261,3 +262,4 @@ P0-08 CI（无依赖，可随时做）
 | 2026-10-16 | **P0-08 完成**：CI 工作流（矩阵 x64/ARM64）；`cargo clippy -D warnings` 本地通过；x64 release 构建实跑 |
 | 2026-10-16 | **端到端实跑验证**：真实窗口启动、WAL 生效、密钥文件生成、库结构正确、`list_accounts` IPC 往返成功；修掉一处过期 UI 文案 |
 | 2026-10-16 | **进入 P1**：**P1-01 FTS5 全文检索完成**（schema v3）；实测确认 unicode61 搜不到中文子串、trigram 搜不到两字查询，故配 LIKE 回退 |
+| 2026-10-16 | **P1-02 后端完成**：`list_folders` + `list_unified_messages`；两个可选过滤条件用一条 SQL 覆盖四种组合 |

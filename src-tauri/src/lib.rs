@@ -38,8 +38,10 @@ pub fn run() {
             commands::accounts::add_account,
             commands::accounts::list_accounts,
             commands::accounts::resolve_provider,
+            commands::folders::list_folders,
             commands::messages::get_message,
             commands::messages::get_messages,
+            commands::messages::list_unified_messages,
             commands::sync::sync_folder,
         ])
         .run(tauri::generate_context!())
