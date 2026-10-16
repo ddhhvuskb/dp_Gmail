@@ -15,9 +15,9 @@
 | P2-01b | HTML 正文（`multipart/alternative`） | ✅ |
 | P2-01c | 附件（`MultiPart::mixed`） | ✅ |
 | P2-01d | `commands::compose::send_mail`（解密凭证 → 投递） | ✅ |
-| P2-01e | 写信界面 + 回复/转发 | ✅（附件选择器除外） |
+| P2-01e | 写信界面 + 回复/转发 | ✅ |
+| P2-01g | 附件选择器（`@tauri-apps/plugin-dialog`） | ✅ |
 | P2-01f | STARTTLS（587）支持 | ⬜ |
-| P2-01g | 附件选择器（需 `@tauri-apps/plugin-dialog`） | ⬜ |
 
 ## 2. 接口契约
 
@@ -110,14 +110,27 @@ pub fn build_message(mail: &OutgoingMail) -> Result<Message, MailError>;
 `drafts.ts` 与组件分开，是为了让「回复/转发怎么拼草稿」这件事**可被单独验证**，
 不必挂载 React 组件。回复会引用原文（逐行 `> `），转发会带上原始头信息。
 
-#### 附件选择器为何不在本轮
+#### 附件选择器（P2-01g）
 
-文件选择需要 `@tauri-apps/plugin-dialog`：JS 包 + Rust crate + `lib.rs` 插件注册
-+ capabilities 权限声明，四处都要动。按「一次一个函数/组件」的粒度，
-本轮先交付**写信 + 回复 + 转发**这条完整链路，附件 UI 单独一轮做完整 API 核实。
+文件选择必须走 `@tauri-apps/plugin-dialog`：webview 的 `<input type="file">`
+只能拿到 `File` 对象、**拿不到真实路径**，而后端按路径读附件。
 
-**后端 `send_mail` 已支持附件**，缺的只是选取入口 —— 这一点在组件文件头也写明了，
-不是悄悄漏掉。
+接入涉及四处，缺一不可：
+
+| 位置 | 内容 |
+| --- | --- |
+| `package.json` | `@tauri-apps/plugin-dialog` 2.8.3 |
+| `Cargo.toml` | `tauri-plugin-dialog` 2.8.3 |
+| `src/lib.rs` | `.plugin(tauri_plugin_dialog::init())` |
+| `capabilities/default.json` | `permissions` 增加 `"dialog:default"` |
+
+**第 4 项是编译期查不出问题的那一项** —— 权限名写错 `cargo check` 照样过，
+要到运行时调用才被拒。故本任务结束时实跑了一次应用确认无权限错误。
+
+已核实：`open<T extends OpenDialogOptions>(options?: T): Promise<OpenDialogReturn<T>>`，
+`multiple: true` 时返回 `string[] | null`（`plugin-dialog/dist-js/index.d.ts:309`）。
+
+`AttachmentField.tsx` 独立成组件，让 `ComposeForm` 留在 100 行以内。
 
 ### 4.1 测试为何只覆盖"网络之前"
 

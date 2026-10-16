@@ -473,6 +473,54 @@ body,
   padding: 8px 20px;
 }
 
+.button--ghost {
+  background: none;
+  border: 1px dashed var(--border);
+  color: #1f2328;
+}
+
+.button--ghost:hover {
+  background: var(--bg-soft);
+}
+
+/* ── 附件列表 ───────────────────────────────── */
+
+.attachment-list {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.attachment-list__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 4px 8px;
+  border: 1px solid var(--border);
+  border-radius: 5px;
+  font-size: 12px;
+}
+
+.attachment-list__name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.attachment-list__remove {
+  border: none;
+  background: none;
+  color: var(--muted);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
 /* ── 详情 ───────────────────────────────────── */
 
 .message-detail__header h2 {

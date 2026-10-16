@@ -46,6 +46,9 @@ base64 = "0.23"
 # hostname/builder，这里只补 tokio1-native-tls 以接入现有异步运行时与 TLS 路线。
 # 决策记录见 docs/adr/ADR-0003-smtp-send.md。
 lettre = { version = "0.11", features = ["tokio1-native-tls"] }
+# 附件文件选择对话框（P2-01g）。Tauri v2 的文件选择必须走插件 ——
+# webview 的 <input type="file"> 拿不到真实路径，而后端按路径读附件。
+tauri-plugin-dialog = "2"
 futures = "0.3"
 thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "io-util"] }

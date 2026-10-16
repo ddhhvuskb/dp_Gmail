@@ -14,12 +14,19 @@ export type ListMode =
   | { kind: "unified" }
   | { kind: "search"; query: string };
 
+/** 待发附件。给**路径**而非字节，理由见 `commands/compose.rs`。 */
+export interface ComposeAttachment {
+  path: string;
+  filename: string;
+}
+
 /** 写信草稿。`html` 为空串表示只发纯文本。 */
 export interface ComposeDraft {
   to: string;
   subject: string;
   text: string;
   html: string;
+  attachments: ComposeAttachment[];
 }
 
 interface SelectionState {
@@ -41,7 +48,7 @@ interface SelectionState {
   closeCompose: () => void;
 }
 
-const EMPTY_DRAFT: ComposeDraft = { to: "", subject: "", text: "", html: "" };
+const EMPTY_DRAFT: ComposeDraft = { to: "", subject: "", text: "", html: "", attachments: [] };
 
 export const useSelection = create<SelectionState>((set) => ({
   accountId: null,

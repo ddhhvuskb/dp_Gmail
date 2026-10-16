@@ -3,5 +3,5 @@
   "identifier": "default",
   "description": "默认能力集：只放行核心权限。",
   "windows": ["main"],
-  "permissions": ["core:default"]
+  "permissions": ["core:default", "dialog:default"]
 }
