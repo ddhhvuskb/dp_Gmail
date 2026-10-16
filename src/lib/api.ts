@@ -61,8 +61,21 @@ export interface SyncReport {
   stored: number;
 }
 
+/** 服务商识别结果。未收录的域名，命令返回 `null`。 */
+export interface ProviderView {
+  provider_id: string;
+  provider_name: string;
+  imap_host: string;
+  imap_port: number;
+  smtp_host: string;
+  smtp_port: number;
+}
+
 export const api = {
   listAccounts: () => invoke<AccountView[]>("list_accounts"),
+
+  /** 由邮箱地址识别服务商，供表单实时提示。未收录返回 `null`。 */
+  resolveProvider: (email: string) => invoke<ProviderView | null>("resolve_provider", { email }),
 
   addAccount: (email: string, secret: string, displayName?: string) =>
     invoke<AccountView>("add_account", {

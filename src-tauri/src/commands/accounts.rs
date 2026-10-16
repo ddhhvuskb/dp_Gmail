@@ -21,6 +21,35 @@ pub struct AccountView {
     pub has_secret: bool,
 }
 
+/// 服务商识别结果，供前端在用户输入邮箱时实时展示。
+///
+/// 服务器地址只用于**显示**（让用户看清将要连到哪里），
+/// 前端不得据此硬编码 —— 真正的连接参数始终由后端从 `provider.rs` 取。
+#[derive(Debug, Clone, PartialEq, Eq, serde::Serialize)]
+pub struct ProviderView {
+    pub provider_id: String,
+    pub provider_name: String,
+    pub imap_host: String,
+    pub imap_port: u16,
+    pub smtp_host: String,
+    pub smtp_port: u16,
+}
+
+/// 由邮箱地址识别服务商。未收录的域名返回 `null`（前端据此提示"暂不支持"）。
+///
+/// 只读、不涉密码、不落库。
+#[tauri::command]
+pub fn resolve_provider(email: String) -> Option<ProviderView> {
+    provider::resolve_by_email(&email).map(|cfg| ProviderView {
+        provider_id: cfg.id.to_owned(),
+        provider_name: cfg.display_name.to_owned(),
+        imap_host: cfg.imap_host.to_owned(),
+        imap_port: cfg.imap_port,
+        smtp_host: cfg.smtp_host.to_owned(),
+        smtp_port: cfg.smtp_port,
+    })
+}
+
 /// 校验新增账户的入参，并解析出服务商。
 ///
 /// 这是命令层唯一有逻辑的地方（参数校验），故单独成函数以便独立测试。

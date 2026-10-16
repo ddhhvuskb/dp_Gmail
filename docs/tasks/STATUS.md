@@ -49,10 +49,11 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | P0-07c | `accounts.secret_encrypted` + schema 迁移 + 账户读写 | ✅ | `cargo test --test schema_migration_test`、`account_store_test` | **5/5 + 6/6** |
 | P0-07d | `commands::add_account`（原 P0-04） | ✅ | `cargo test --test add_account_test` | **7/7** |
 | P0-07e | `commands::sync_folder`（原 P0-04d） | ✅ | `cargo test --test sync_support_test` | **11/11**；IMAP 段待真机联调 |
+| P0-05 | 账户配置界面（服务商自动识别，不存明文密码） | ✅ | `tsc --noEmit` + `cargo test` | **5/5**；UI 未在真实窗口跑过 |
 | P0-06 | 邮件列表 + 详情（虚拟滚动，HTML 净化） | ✅ | `tsc --noEmit` + `cargo test` | **5/5 + 5/5**；UI 未在真实窗口跑过 |
 | P0-08 | CI 构建 Windows x64 + ARM64 | ⬜ | workflow 语法校验 | — |
 
-### 累计测试：**111 全绿**
+### 累计测试：**116 全绿**
 
 | 测试目标 | 用例数 |
 | --- | --- |
@@ -73,6 +74,7 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | `sync_support_test` | 11 |
 | `message_detail_test` | 5 |
 | `list_accounts_test` | 5 |
+| `resolve_provider_test` | 5 |
 
 **前端**：`tsc --noEmit` exit 0；`npm run build` exit 0。
 
@@ -123,11 +125,16 @@ src/
 │   ├── api.ts               Tauri 命令类型化封装（camelCase 载荷）
 │   └── format.ts            日期 / 字节 / 发件人格式化
 ├── stores/selection.ts      Zustand：账户 / 文件夹 / 邮件选择
-└── features/inbox/
-    ├── useInbox.ts          TanStack Query hooks
-    ├── InboxToolbar.tsx     账户选择 + 信箱名 + 同步
-    ├── MessageList.tsx      虚拟滚动列表
-    └── MessageDetail.tsx    详情（净化后 HTML）
+├── features/
+│   ├── accounts/
+│   │   ├── AccountForm.tsx      新增账户（实时服务商识别，密码即时清空）
+│   │   ├── AccountList.tsx      已配置账户
+│   │   └── useProviderLookup.ts 去抖后的识别查询
+│   └── inbox/
+│       ├── useInbox.ts          TanStack Query hooks
+│       ├── InboxToolbar.tsx     账户选择 + 信箱名 + 同步
+│       ├── MessageList.tsx      虚拟滚动列表
+│       └── MessageDetail.tsx    详情（净化后 HTML）
 ```
 
 ---
@@ -184,3 +191,4 @@ P0-08 CI（无依赖，可随时做）
 | 2026-10-16 | **P0-07d `add_account` 完成**；`provider::find_by_id` 补齐 `sync_folder` 的前置 |
 | 2026-10-16 | **P0-07e `sync_folder` 完成**：三段式编排规避 `MutexGuard` 跨 `.await`；`upsert_messages` 整批单事务 |
 | 2026-10-16 | **P0-06 完成**：`get_message` + `list_accounts` 命令；前端三栏界面、虚拟滚动列表、净化后渲染详情 |
+| 2026-10-16 | **P0-05 完成**：`resolve_provider` 命令（用户批准）+ 账户表单/列表，实时识别、密码即时清空 |

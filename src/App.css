@@ -23,7 +23,7 @@ body,
 
 .app {
   display: grid;
-  grid-template-columns: 260px minmax(280px, 380px) 1fr;
+  grid-template-columns: 320px minmax(280px, 380px) 1fr;
   height: 100%;
 }
 
@@ -118,6 +118,104 @@ body,
 }
 
 .toolbar__hint {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+/* ── 账户配置（P0-05）───────────────────────── */
+
+.sidebar__heading {
+  font-size: 13px;
+  color: var(--muted);
+  text-transform: none;
+  margin: 18px 0 8px;
+}
+
+.sidebar__hint {
+  color: var(--muted);
+  font-size: 12px;
+  margin: 0;
+}
+
+.account-form {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.field > span {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.field input {
+  padding: 6px 8px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+  font: inherit;
+}
+
+.field__ok {
+  color: #15803d;
+  font-size: 12px;
+  margin: 0;
+}
+
+.field__error {
+  color: #b91c1c;
+  font-size: 12px;
+  margin: 0;
+  word-break: break-all;
+}
+
+.button {
+  padding: 8px;
+  border: none;
+  border-radius: 6px;
+  background: var(--accent);
+  color: #fff;
+  font: inherit;
+  cursor: pointer;
+}
+
+.button:disabled {
+  background: #b6c2d4;
+  cursor: not-allowed;
+}
+
+.account-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.account-list__item {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #fff;
+}
+
+.account-list__name {
+  font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.account-list__meta {
   color: var(--muted);
   font-size: 12px;
 }
