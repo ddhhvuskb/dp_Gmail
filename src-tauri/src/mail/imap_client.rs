@@ -62,15 +62,43 @@ pub async fn connect_and_login(
             }
         };
 
-        client
+        let mut session = client
             .login(user, secret)
             .await
-            .map_err(|(err, _client)| MailError::Imap(err))
+            .map_err(|(err, _client)| MailError::Imap(err))?;
+
+        send_client_id_if_supported(&mut session).await?;
+        Ok(session)
     };
 
     tokio::time::timeout(Duration::from_secs(IMAP_TIMEOUT_SECS), handshake)
         .await
         .map_err(|_| MailError::Timeout(IMAP_TIMEOUT_SECS))?
+}
+
+/// 网易（163 / 126 / yeah.net）要求在 `SELECT` 之前发送 IMAP `ID` 命令
+/// （RFC 2971），否则读取邮件时服务器会拒绝：
+///
+/// ```text
+/// SELECT Unsafe Login. Please contact kefu@188.com for help
+/// ```
+///
+/// 这个症状极具误导性 —— 连得上、登录也成功，只有读邮件时才失败，
+/// 很容易被当成"密码错了"或"163 不支持 IMAP"。
+///
+/// **仅当服务器声明 `ID` 能力时才发送**：无条件发送会给不支持的服务器
+/// 制造无谓的失败。QQ 邮箱不发此命令，行为不变。
+async fn send_client_id_if_supported(session: &mut ImapSession) -> Result<(), MailError> {
+    let capabilities = session.capabilities().await?;
+    if !capabilities.has_str("ID") {
+        return Ok(());
+    }
+
+    session
+        .run_command_and_check_ok(r#"ID ("name" "dp_Gmail" "version" "0.1.0" "vendor" "dp_Gmail")"#)
+        .await?;
+
+    Ok(())
 }
 
 /// 读取并校验服务器问候语。

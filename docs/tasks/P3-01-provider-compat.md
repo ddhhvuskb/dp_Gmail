@@ -72,23 +72,38 @@ SELECT Unsafe Login. Please contact kefu@188.com for help
 | 范围 | 163.com、126.com、yeah.net（网易系全部） |
 | 不适用 | QQ 邮箱不需要（现有实现正确） |
 
-### 3.2 可用的实现路径（已核实）
+### 3.2 实现（已完成）
 
-`async-imap` 未提供 `ID` 的专用方法，但具备实现条件：
+已在 `mail/imap_client.rs` 的 `send_client_id_if_supported` 实现：
 
-| 需要的能力 | 现状 |
-| --- | --- |
-| 读取服务器能力列表 | `Session::capabilities()` |
-| 识别未知能力（含 `ID`） | `Capability::Atom(String)`（`capabilities.rs:24`）—— `ID` 会以 `Atom("ID")` 出现 |
-| 发送原始命令 | `run_command_and_check_ok("ID (…)", None)` |
+```rust
+let capabilities = session.capabilities().await?;
+if !capabilities.has_str("ID") {
+    return Ok(());              // 先探测再发送
+}
+session.run_command_and_check_ok(r#"ID ("name" "dp_Gmail" …)"#).await?;
+```
 
-正确做法是**先探测再发送**：`hermes-agent` 的修复提交
-（[6afec11](https://github.com/NousResearch/hermes-agent/commit/6afec11fb8bb1378ac3d030d495b702501973e16)）
-用的就是「仅在服务器声明该能力时才发 ID」。
-无条件发送会给不支持的服务器制造无谓的失败。
+在 `login` 成功之后、返回 `Session` 之前调用。QQ 邮箱不声明 `ID` 能力，
+故走 `return Ok(())` 提前返回，**行为与之前完全一致**。
 
-> 注意：`ID` 命令的参数格式本身也有讲究（#85 的标题就是 "ID command format"），
-> 具体参数需在真机上试。**这又是一处必须真机验证的地方。**
+#### 实现时踩到的 API 细节
+
+`run_command_and_check_ok` 在 `async-imap` 里有**两个签名**：
+
+| 调用载体 | 解析到 | 参数 |
+| --- | --- | --- |
+| `Client<TcpStream>`（STARTTLS 分支） | `Connection` 版本 | **2 个**（第二参 `None`） |
+| `Session`（本函数） | `Client` 版本 | **1 个** |
+
+同一个方法名，因载体不同而参数个数不同。两次都是编译器直接指出来 ——
+**这正是「先核实 API 再写」的价值：错了能立刻知道错在哪，而不是靠猜反复试。**
+
+#### 仍未验证
+
+`ID` 命令的**参数格式**本身有讲究（[mcp-email-server#85](https://github.com/Wh1isper/mcp-email-server/issues/85)
+的标题就是 "ID command format"）。当前用的是常见写法，
+**必须在真实 163 账户上验证**，否则可能仍然被拒。
 
 ---
 
@@ -154,7 +169,7 @@ pub fn resolve_by_email(email: &str) -> Option<&'static ProviderConfig> {
 | 项 | 状态 |
 | --- | --- |
 | 免费个人邮箱地址核实 | 🟨 163 已核实；126 / yeah.net / sina.com / 139 / 189 未找到权威来源 |
-| 网易 IMAP `ID` 命令支持 | ⬜ 未实现（见 §3） |
+| 网易 IMAP `ID` 命令支持 | ✅ 已实现（见 §3），**真机未验证** |
 | 企业邮箱的手动选择 UI | ⬜ 待方案确定 |
 | OAuth（P3 后半） | ⬜ 未开始 |
 | IMAP 侧 STARTTLS | ✅ 已完成（见 `P2-01-smtp-send.md` 与 `imap_client.rs`） |
