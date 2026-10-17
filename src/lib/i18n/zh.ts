@@ -120,6 +120,19 @@ export const zh = {
   "theme.switchToDark": "切换到黑夜模式（夜间护眼）",
   "language.label": "语言",
 
+  // ── 外观：主题基调 + 重点色 ─────────────────────────────────
+  "appearance.theme": "主题",
+  "appearance.accent": "重点色",
+  "themeName.light": "明",
+  "themeName.dark": "暗",
+  "themeName.sepia": "护眼米色",
+  "themeName.midnight": "深空蓝",
+  "accentName.azure": "蓝",
+  "accentName.emerald": "绿",
+  "accentName.violet": "紫",
+  "accentName.amber": "橙",
+  "accentName.rose": "玫红",
+
   // ── 格式化 ──────────────────────────────────────────────────
   "format.noDate": "无日期",
   "format.unknownSender": "未知发件人",

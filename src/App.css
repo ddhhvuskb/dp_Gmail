@@ -1,7 +1,23 @@
 /* 三栏布局：侧栏 | 邮件列表 | 详情。 */
 
+/* ── 配色层：两个维度 ──────────────────────────────────────────
+ *
+ * 基调   `data-theme`  ：明 / 暗 / 护眼米 / 深空蓝（各自一整套变量）
+ * 重点色 `data-accent` ：只改色相，明度与饱和度跟基调走
+ *
+ * 组件**只读变量，不认主题名** —— 这是上一轮把颜色收进变量换来的：
+ * 加一套主题只是加一段变量声明，不动任何组件。
+ *
+ * `--accent` 不写死字面色值，而是由「色相 + 饱和度 + 明度」算出来，
+ * 所以 5 种重点色 × 4 套基调 = 20 种组合不用手写 20 条。
+ *
+ * 每个重点色的明度给两档（`--h-light` / `--h-dark`）：
+ * 同一个绿，浅底上要用**暗绿**才压得住白字，深底上却要**亮绿**才看得清。
+ * 两档的取值不是拍脑袋来的，是实测对比度后定的（见 P4-03 §12）。
+ */
+
 :root {
-  /* 明色主题。所有颜色都从这里取 —— 组件里不得再出现字面色值。 */
+  /* 明色基调（默认）。所有颜色都从这里取 —— 组件里不得再出现字面色值。 */
   color-scheme: light;
   --bg: #eef1f6;
   --bg-gradient: linear-gradient(160deg, #eef2f9 0%, #e6ebf5 45%, #dfe6f2 100%);
@@ -11,23 +27,36 @@
   --border: #e2e5ea;
   --text: #1f2328;
   --muted: #6b7280;
-  --accent: #2563eb;
-  --on-accent: #ffffff;
   --danger: #b91c1c;
   --success: #15803d;
   --disabled: #b6c2d4;
-  --selected: #e8f0fe;
   --shadow-lifted: 0 12px 32px rgb(0 0 0 / 18%);
   --shadow-soft: 0 1px 2px rgb(16 24 40 / 6%), 0 8px 24px rgb(16 24 40 / 7%);
   --glass-bg: rgb(255 255 255 / 62%);
   --glass-border: rgb(255 255 255 / 55%);
+
+  /* 重点色：默认 azure。--h-light / --h-dark 会被 [data-accent] 覆盖。 */
+  --h-light: 44%;
+  --h-dark: 64%;
+  --accent-hue: 212;
+  --accent-sat: 72%;
+  --accent-light: var(--h-light);
+  --accent: hsl(var(--accent-hue) var(--accent-sat) var(--accent-light));
+  --on-accent: #ffffff;
+  /* 选择器圆点用的预览色，与 --accent-hue 同源 */
+  --swatch: hsl(212 72% 46%);
 
   font-family: system-ui, "Microsoft YaHei", sans-serif;
   font-size: 14px;
   color: var(--text);
 }
 
-/* 暗色主题。`color-scheme: dark` 让原生滚动条与表单控件一起变暗 —— 
+/* 选中态跟着重点色走：否则换个绿色重点色，选中行还是蓝的。 */
+:root {
+  --selected: color-mix(in srgb, var(--accent) 14%, var(--surface));
+}
+
+/* 暗色基调。`color-scheme: dark` 让原生滚动条与表单控件一起变暗 ——
    否则深色界面上会留一条刺眼的白滚动条。 */
 [data-theme="dark"] {
   color-scheme: dark;
@@ -39,16 +68,111 @@
   --border: #2c323b;
   --text: #e7eaf0;
   --muted: #98a1ad;
-  --accent: #4c8dff;
-  --on-accent: #ffffff;
   --danger: #f87171;
   --success: #4ade80;
   --disabled: #39404a;
-  --selected: #1e2f52;
   --shadow-lifted: 0 12px 32px rgb(0 0 0 / 55%);
   --shadow-soft: 0 1px 2px rgb(0 0 0 / 45%), 0 8px 24px rgb(0 0 0 / 35%);
   --glass-bg: rgb(30 35 44 / 58%);
   --glass-border: rgb(255 255 255 / 8%);
+  --selected: color-mix(in srgb, var(--accent) 20%, var(--surface));
+}
+
+/* 护眼米色：偏暖、低蓝光。纸感底色，长时间看比纯白舒服。 */
+[data-theme="sepia"] {
+  color-scheme: light;
+  --bg: #f2ebdd;
+  --bg-gradient: linear-gradient(160deg, #f7f2e7 0%, #f1e9da 45%, #eae0cd 100%);
+  --bg-soft: #f9f4e9;
+  --surface: #fffcf5;
+  --surface-sunken: #ece2cf;
+  --border: #dfd3bd;
+  --text: #3a332a;
+  --muted: #7b6f58;
+  --danger: #a5311c;
+  --success: #41651f;
+  --disabled: #c6b99f;
+  --shadow-lifted: 0 12px 32px rgb(60 40 10 / 20%);
+  --shadow-soft: 0 1px 2px rgb(60 40 10 / 8%), 0 8px 24px rgb(60 40 10 / 10%);
+  --glass-bg: rgb(255 252 245 / 64%);
+  --glass-border: rgb(255 255 255 / 55%);
+  --selected: color-mix(in srgb, var(--accent) 16%, var(--surface));
+}
+
+/* 深空蓝：比纯黑更冷、更暗，夜里不刺眼但保留蓝色调。 */
+[data-theme="midnight"] {
+  color-scheme: dark;
+  --bg: #0a1220;
+  --bg-gradient: linear-gradient(160deg, #0e1930 0%, #0a1120 45%, #060b16 100%);
+  --bg-soft: #101a2c;
+  --surface: #14203a;
+  --surface-sunken: #1b2a47;
+  --border: #24344f;
+  --text: #e4ebf8;
+  --muted: #8d9cb8;
+  --danger: #fb7185;
+  --success: #4ade80;
+  --disabled: #2c3c56;
+  --shadow-lifted: 0 12px 32px rgb(0 0 0 / 62%);
+  --shadow-soft: 0 1px 2px rgb(0 0 0 / 52%), 0 8px 24px rgb(0 0 0 / 42%);
+  --glass-bg: rgb(20 32 58 / 58%);
+  --glass-border: rgb(255 255 255 / 8%);
+  --selected: color-mix(in srgb, var(--accent) 22%, var(--surface));
+}
+
+/* 深色基调整体把重点色提亮、并把它上面的文字改成深色 ——
+   亮色按钮上压白字是看不清的。 */
+[data-theme="dark"],
+[data-theme="midnight"] {
+  --accent-sat: 70%;
+  --accent-light: var(--h-dark);
+  --on-accent: #0b0e13;
+}
+
+/* ── 五种重点色：只定色相 + 两档明度 ───────────────────────────
+ *
+ * 明度的具体数值是按对比度实测定的，不是审美拍的：
+ * 白字压在强调色上必须 ≥ 4.5:1。绿色在 46% 明度下只有约 2.2:1，
+ * 所以浅底档压到 28%；橙色 46% 时约 3.3:1，压到 38%。
+ *
+ * `--swatch` 是写给「重点色选择器」里那颗小圆点的。它必须和 `--accent-hue`
+ * 写在**同一条规则里** —— 圆点元素自身带 `data-accent="…"`，才能各自取到自己的颜色。
+ * 单独写一份 `.swatch--emerald { background: … }` 就等于把色相抄两遍。
+ */
+
+[data-accent="azure"] {
+  --accent-hue: 212;
+  --h-light: 44%;
+  --h-dark: 64%;
+  --swatch: hsl(212 72% 46%);
+}
+
+[data-accent="emerald"] {
+  --accent-hue: 152;
+  --h-light: 28%;
+  --h-dark: 58%;
+  --swatch: hsl(152 62% 34%);
+}
+
+[data-accent="violet"] {
+  --accent-hue: 265;
+  --h-light: 48%;
+  --h-dark: 68%;
+  --swatch: hsl(265 62% 52%);
+}
+
+[data-accent="amber"] {
+  --accent-hue: 28;
+  --h-light: 38%;
+  --h-dark: 62%;
+  --swatch: hsl(28 72% 42%);
+}
+
+[data-accent="rose"] {
+  --accent-hue: 342;
+  --h-light: 44%;
+  --h-dark: 64%;
+  --swatch: hsl(342 72% 46%);
 }
 
 * {
@@ -777,4 +901,64 @@ body,
   font: inherit;
   cursor: pointer;
 }
+
+/* ── 外观选择：主题 + 重点色 ───────────────────── */
+
+.appearance {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+}
+
+.appearance__row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.appearance__label {
+  flex: none;
+  min-width: 3.4em;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.appearance__select {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+
+/* 重点色：一排小圆点。圆点自身带 data-accent，颜色由 CSS 的 --swatch 给，
+   所以这里不出现任何字面色值。 */
+.appearance__swatches {
+  display: flex;
+  flex: 1;
+  gap: 6px;
+}
+
+.appearance__swatch {
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 1px solid color-mix(in srgb, var(--text) 18%, transparent);
+  border-radius: 50%;
+  background: var(--swatch);
+  cursor: pointer;
+}
+
+.appearance__swatch--active {
+  outline: 2px solid var(--text);
+  outline-offset: 1px;
+}
+
 

@@ -95,6 +95,18 @@ export const ja: Record<Key, string> = {
   "theme.switchToDark": "ダークモードに切り替え（夜間の目に優しい）",
   "language.label": "言語",
 
+  "appearance.theme": "テーマ",
+  "appearance.accent": "アクセント",
+  "themeName.light": "ライト",
+  "themeName.dark": "ダーク",
+  "themeName.sepia": "セピア",
+  "themeName.midnight": "ミッドナイト",
+  "accentName.azure": "ブルー",
+  "accentName.emerald": "グリーン",
+  "accentName.violet": "パープル",
+  "accentName.amber": "オレンジ",
+  "accentName.rose": "ローズ",
+
   "format.noDate": "日付なし",
   "format.unknownSender": "不明な差出人",
 };

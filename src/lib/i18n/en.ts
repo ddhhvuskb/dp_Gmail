@@ -95,6 +95,18 @@ export const en: Record<Key, string> = {
   "theme.switchToDark": "Switch to dark mode (easier on the eyes at night)",
   "language.label": "Language",
 
+  "appearance.theme": "Theme",
+  "appearance.accent": "Accent",
+  "themeName.light": "Light",
+  "themeName.dark": "Dark",
+  "themeName.sepia": "Sepia",
+  "themeName.midnight": "Midnight",
+  "accentName.azure": "Blue",
+  "accentName.emerald": "Green",
+  "accentName.violet": "Violet",
+  "accentName.amber": "Amber",
+  "accentName.rose": "Rose",
+
   "format.noDate": "No date",
   "format.unknownSender": "Unknown sender",
 };

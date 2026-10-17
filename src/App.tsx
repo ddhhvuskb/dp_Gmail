@@ -15,11 +15,13 @@ import { emptyHint, listTitle } from "./features/inbox/listLabels";
 import MessageList from "./features/inbox/MessageList";
 import SearchBox from "./features/inbox/SearchBox";
 import { useAccounts, useFolders, usePagedRows } from "./features/inbox/useInbox";
+import AppearancePicker from "./features/settings/AppearancePicker";
 import LanguageSelect from "./features/settings/LanguageSelect";
 import ThemeToggle from "./features/settings/ThemeToggle";
 import { useT } from "./lib/i18n/useT";
 import { useAppliedLang } from "./stores/language";
 import { useSelection } from "./stores/selection";
+import { useAppliedAppearance } from "./stores/theme";
 
 export default function App() {
   const accounts = useAccounts();
@@ -30,6 +32,7 @@ export default function App() {
   const openCompose = useSelection((state) => state.openCompose);
 
   useAppliedLang();
+  useAppliedAppearance();
   const t = useT();
 
   const folders = useFolders(accountId);
@@ -46,6 +49,7 @@ export default function App() {
         <h1 className="app__title">dp_Gmail</h1>
 
         <ThemeToggle />
+        <AppearancePicker />
         <LanguageSelect />
 
         <button type="button" className="button" onClick={() => openCompose()}>
