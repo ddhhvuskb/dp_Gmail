@@ -96,8 +96,62 @@ IMAP 侧 STARTTLS、网易 `ID`、性能实测（1000 封滚动零掉帧、搜�
 - **提交信息含引号时用 `git commit -F <文件>`**。
 - `pwsh` / `git` / `cargo` 不在默认 PATH 上：shell 是 Windows PowerShell 5.1，
   git 在 `C:\Program Files\Git\cmd\git.exe`，cargo 在 `%USERPROFILE%\.cargo\bin`。
+- **别对应用用 `Stop-Process -Force`**：会留下 `msedgewebview2.exe` 孤儿占住
+  `%LOCALAPPDATA%\com.dpgmail.desktop\EBWebView`，之后**任何**启动都静默 panic
+  （exit 101，HRESULT `0x8007139F`），窗口根本不出现。
+  用 `$p.CloseMainWindow()` 正常关闭（实测零残留）。详见 `AGENTS.md` 工具注意事项第 5 条。
 
-### 6.2 真机调试（WebView2）
+### 6.2 磁盘占用：22 GB 是构建缓存，不是邮件
+
+2026-10-17 用户报「占 22.8 GB」。实测定位：
+
+| 位置 | 大小 | 是什么 |
+| --- | --- | --- |
+| `src-tauri/target/debug` | **20.49 GB** | Rust 调试构建缓存（可随时删，删了下次编译慢几分钟） |
+| `src-tauri/target/release` | 1.98 GB | 正式构建缓存（当前桌面 exe 的来源） |
+| `src-tauri/target/x86_64-pc-windows-msvc` | 1.10 GB | `tauri build` 旧产物，已过期 |
+| `%APPDATA%\com.dpgmail.desktop` | **0.01 GB** | **真正属于你的东西：邮件 + 加密凭证 + 密钥** |
+
+**为什么一句代码的项目能占 20 GB**：`src-tauri/tests/` 下有 28 个集成测试二进制，
+debug 构建里每一个都独立完整链接整棵依赖树，并各自生成 PDB 调试符号 ——
+光 `deps` 里就有 **80 个 >100 MB 的 .pdb**。每次 `cargo test` 还会积累不同哈希的旧产物
+（实测攒了 **110 个测试 .exe**、3566 个文件）。
+
+清理（已做过一次，可重复执行）：
+
+```powershell
+Remove-Item "D:\dp_Gmail\src-tauri\target\debug" -Recurse -Force
+```
+
+**想永久瘦身**（需用户同意再改，属 `Cargo.toml` 变更）：
+
+```toml
+[profile.dev]
+debug = 1   # 只要行号表，不要完整调试符号；体积通常降一个数量级
+```
+
+代价：debug 构建的 panic 回溯里没有变量与类型信息。`debug = 0` 更小但回溯基本没用。
+
+### 6.3 两个 exe 别搞混：`target/debug` 那个**不能双击**
+
+| 文件 | 双击能不能用 | 为什么 |
+| --- | --- | --- |
+| 桌面的 `dp_Gmail.exe` | ✅ 能 | 正式构建，前端已打包进 exe，不依赖任何本地服务 |
+| `src-tauri/target/debug/dp-gmail.exe` | ❌ **不能** | dev 构建，前端从 `http://localhost:1420` 加载（`devUrl`） |
+
+双击 dev 构建时的**具体症状**（2026-10-17 用户实际看到的）：
+窗口里是**浏览器的错误页，显示「拒绝访问」** —— 因为它去访问
+`http://localhost:1420`，而 Vite dev 服务没启动。
+
+dev 构建只能在项目目录里用一条命令跑起来，那条命令会同时拉起 Vite 与 Rust：
+
+```powershell
+npm run tauri dev
+```
+
+**所以：给用户交付/让他自己打开时，永远给 release 产物；dev 产物只用于开发。**
+
+### 6.4 真机调试（WebView2）
 
 - 用 `TAURI_CONFIG` 环境变量注入 `additionalBrowserArgs: "--remote-debugging-port=9222"`，
   再用 CDP 驱动。**`WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS` 无效** —— wry 总会自己调
@@ -109,7 +163,7 @@ IMAP 侧 STARTTLS、网易 `ID`、性能实测（1000 封滚动零掉帧、搜�
 - **中文输入法会截走 `SendKeys` 的字符**，改用剪贴板粘贴。
 - **坐标必须从实拍截图量**，不能凭旧截图推算。
 
-### 6.3 开发过程本身
+### 6.5 开发过程本身
 
 - **底层测通了不等于上层测通了。** 加测试前先问：这个功能从哪个入口被调用？我测的是那个入口吗？
 - **规则写下来 ≠ 规则被执行。** 「每个任务文档必须写明未验证边界」加进去之后，四轮才发现 4 份最早的文档根本没写。

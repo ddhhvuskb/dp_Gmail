@@ -209,6 +209,44 @@ PowerShell 5.1 的控制台以 GBK 解码，**读取 UTF-8 文件时中文必然
 **判据：一个永远返回「没有」的探测器，和「功能真的没实现」长得一模一样。**
 所以先跑一次**阳性对照**（确认探针能测到已知会发生的事），再信它的结论。
 
+### 5. 不要对 dp-gmail 用 `Stop-Process -Force`
+
+2026-10-17 实测：强杀应用后，它的 **`msedgewebview2.exe` 子进程不会跟着退出**，
+变成孤儿继续占着 WebView2 的用户数据目录
+`%LOCALAPPDATA%\com.dpgmail.desktop\EBWebView`。
+之后**任何**一次启动都会在创建 webview 时 panic 并立刻退出：
+
+```
+Failed to setup app: runtime error: failed to create webview:
+WebView2 error: WindowsError(Error { code: HRESULT(0x8007139F),
+message: "组或资源的状态不是执行请求操作的正确状态。" })
+```
+
+退出码 101，**窗口根本不出现** —— 用户看到的就是「打不开」。
+
+两条规矩：
+
+| 要做 | 不要做 |
+| --- | --- |
+| `$p.CloseMainWindow()` 正常关闭（实测**零残留**） | `Stop-Process -Force`（留下 6 个孤儿） |
+| 真要强杀时，先杀应用、**再**清掉属于本应用的 webview 孤儿 | 只杀 `dp-gmail` 就以为干净了 |
+
+```powershell
+# 进程名是 dp_Gmail（桌面那个 exe），不是 dp-gmail —— 按名字杀很容易漏
+Get-Process | Where-Object { $_.ProcessName -like "dp*" } | ForEach-Object { $_.CloseMainWindow() }
+
+# 万一已经留下孤儿，只清属于本应用的（命令行里带 user-data-dir），别误杀别的程序
+Get-CimInstance Win32_Process -Filter "Name='msedgewebview2.exe'" |
+  Where-Object { $_.CommandLine -like "*com.dpgmail.desktop*" } |
+  ForEach-Object { Stop-Process -Id $_.ProcessId -Force }
+```
+
+另外：**不要直接双击 `src-tauri/target/debug/dp-gmail.exe`**。
+那是 dev 构建，前端从 `http://localhost:1420` 加载（`tauri.conf.json` 的 `devUrl`），
+dev 服务没起时它给不出界面；它编译时还带了 `--remote-debugging-port`，
+与正式版的浏览器参数不同，撞上正在运行的正式版同样会踩到上面那个 0x8007139F。
+要双击就用桌面的 `dp_Gmail.exe`，要开发就 `npm run tauri dev`。
+
 ---
 
 ## 绝对禁止
