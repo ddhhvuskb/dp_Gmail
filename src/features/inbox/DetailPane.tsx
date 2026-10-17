@@ -15,12 +15,19 @@ import { useMessage } from "./useInbox";
 export default function DetailPane() {
   const messageId = useSelection((state) => state.messageId);
   const openCompose = useSelection((state) => state.openCompose);
+  const setNav = useSelection((state) => state.setNav);
   const t = useT();
   const message = useMessage(messageId);
   const data = message.data;
 
   return (
     <section className="app__detail">
+      {/* 只在窄屏显示：桌面端三栏并排，不需要返回 */}
+      <button type="button" className="mobile-back" onClick={() => setNav("list")}>
+        <span aria-hidden="true">←</span>
+        <span>{t("nav.backToList")}</span>
+      </button>
+
       {messageId === null && <p className="app__hint">{t("app.selectMessage")}</p>}
       {messageId !== null && message.isPending && <p className="app__hint">{t("app.loading")}</p>}
       {message.isError && <p className="app__error">{String(message.error)}</p>}

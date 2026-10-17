@@ -100,14 +100,16 @@ export const zh = {
 
   // ── 写信 ────────────────────────────────────────────────────
   "compose.title": "写邮件",
+  "compose.from": "发件账户",
   "compose.close": "关闭",
-  "compose.noAccount": "请先在左侧选择一个账户",
+  "compose.noAccount": "还没有配置账户，先在侧栏「添加账户」里加一个。",
   "compose.to": "收件人（多个用逗号分隔）",
   "compose.subject": "主题",
   "compose.bodyText": "正文（纯文本）",
   "compose.bodyHtml": "HTML 正文（可选，填写后以 multipart/alternative 发送）",
   "compose.bodyHtmlPlaceholder": "<p>富文本正文</p>",
   "compose.send": "发送",
+  "compose.sentFolder": "已发送",
   "compose.sending": "发送中…",
   "compose.sent": "已发送",
 
@@ -124,6 +126,12 @@ export const zh = {
   "drafts.forwardTo": "收件人：{value}",
   "drafts.forwardDate": "时间：{value}",
   "drafts.forwardSubject": "主题：{value}",
+
+  // ── 联系人 / 导航 ──────────────────────────────────────────
+  "nav.sidebar": "账户与文件夹",
+  "nav.backToList": "返回列表",
+  "nav.openSidebar": "打开账户与文件夹",
+  "nav.closeSidebar": "收起侧栏",
 
   // ── 主题 / 语言开关 ─────────────────────────────────────────
   // 图标由组件里的独立 `<span aria-hidden>` 负责，词典里**不带** emoji，否则会重复。

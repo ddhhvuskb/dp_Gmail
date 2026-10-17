@@ -29,6 +29,20 @@ export function useAccounts() {
   });
 }
 
+/**
+ * 文件夹树要的「账户 id → 显示名」列表。
+ *
+ * 抽成 hook 而不是在 `App` 里 map 一遍：那几行会让外壳顶过 100 行上限。
+ * 与外壳共用同一个 `["accounts"]` 查询缓存，不会多发请求。
+ */
+export function useAccountOptions(): { id: number; label: string }[] {
+  const accounts = useAccounts();
+  return (accounts.data ?? []).map((account) => ({
+    id: account.id,
+    label: account.display_name ?? account.email,
+  }));
+}
+
 export function useFolders(accountId: number | null) {
   return useQuery({
     queryKey: ["folders", accountId],

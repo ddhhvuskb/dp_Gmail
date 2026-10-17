@@ -22,8 +22,8 @@ pub use account_store::{
 pub use error::StorageError;
 pub use folder_store::{ensure_folder, list_folders, FolderRecord};
 pub use message_store::{
-    list_messages, list_unified_messages, load_message_detail, upsert_message, upsert_messages,
-    AttachmentMeta, MessageDetail, MessageSummary, NewAttachment, NewMessage,
+    list_messages, list_unified_messages, load_message_detail, mark_seen, upsert_message,
+    upsert_messages, AttachmentMeta, MessageDetail, MessageSummary, NewAttachment, NewMessage,
     UnifiedMessageSummary,
 };
 pub use schema::{init_schema, SCHEMA_VERSION};

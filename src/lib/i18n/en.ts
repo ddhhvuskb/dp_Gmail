@@ -80,14 +80,16 @@ export const en: Record<Key, string> = {
   "detail.noBody": "(no body)",
 
   "compose.title": "Compose",
+  "compose.from": "Send from",
   "compose.close": "Close",
-  "compose.noAccount": "Select an account on the left first",
+  "compose.noAccount": 'No account configured yet. Add one under "Add account" in the sidebar.',
   "compose.to": "To (separate multiple addresses with commas)",
   "compose.subject": "Subject",
   "compose.bodyText": "Body (plain text)",
   "compose.bodyHtml": "HTML body (optional; sent as multipart/alternative)",
   "compose.bodyHtmlPlaceholder": "<p>Rich text body</p>",
   "compose.send": "Send",
+  "compose.sentFolder": "Sent",
   "compose.sending": "Sending…",
   "compose.sent": "Sent",
 
@@ -102,6 +104,11 @@ export const en: Record<Key, string> = {
   "drafts.forwardTo": "To: {value}",
   "drafts.forwardDate": "Date: {value}",
   "drafts.forwardSubject": "Subject: {value}",
+
+  "nav.sidebar": "Accounts & folders",
+  "nav.backToList": "Back to list",
+  "nav.openSidebar": "Open accounts and folders",
+  "nav.closeSidebar": "Close sidebar",
 
   "theme.light": "Light mode",
   "theme.dark": "Dark mode",

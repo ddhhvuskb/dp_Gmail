@@ -169,3 +169,96 @@ pub async fn send_mail(
         .await
         .map_err(|err| err.to_string())
 }
+
+/// 本地「已发送」文件夹名。
+///
+/// **这是本地归档，不是服务器上的发件箱。** 各服务商对发件箱的命名完全不同
+/// （`Sent Messages` / `已发送` / 修改过的 UTF-7），要同步它得按服务商逐个特判。
+/// 本地记一份能保证「发完立刻在应用里看得到」，与服务器行为无关。
+pub const SENT_FOLDER_NAME: &str = "已发送";
+
+/// 本地归档结果：前端据此跳到「已发送」文件夹。
+#[derive(Debug, Clone, Copy, serde::Serialize)]
+pub struct SentRecord {
+    pub folder_id: i64,
+    pub message_id: i64,
+}
+
+/// 把刚发出的一封信记进本地「已发送」。
+///
+/// 为什么需要它：`send_mail` 只走 SMTP，投递成功后**本地什么也没留下** ——
+/// 用户看到的是「发出去了，但应用里没有这封信，同步也同步不到」。
+/// （服务器上的发件箱要另外同步，且各家的名字不一样。）
+///
+/// 只在**发送成功之后**调用，失败的信不该出现在已发送里。
+#[tauri::command]
+pub fn record_sent(
+    state: tauri::State<'_, AppState>,
+    account_id: i64,
+    to: Vec<String>,
+    subject: String,
+    body_text: String,
+    body_html: Option<String>,
+) -> Result<SentRecord, String> {
+    let recipients = normalize_recipients(to);
+    if recipients.is_empty() {
+        return Err("至少需要一个收件人".to_owned());
+    }
+
+    let mut conn = state
+        .db
+        .lock()
+        .map_err(|err| format!("数据库连接不可用：{err}"))?;
+
+    // 发件人就是账户本身，从库里取，不让前端传（前端传就可能被伪造）
+    let from_email: String = conn
+        .query_row("SELECT email FROM accounts WHERE id = ?1", [account_id], |row| {
+            row.get(0)
+        })
+        .map_err(|_| format!("账户不存在：{account_id}"))?;
+
+    let folder_id = storage::ensure_folder(&conn, account_id, SENT_FOLDER_NAME)
+        .map_err(|err| err.to_string())?;
+
+    // 本地归档用的 uid：该文件夹内自增。它永远不参与 IMAP 去重，
+    // 因为服务器上的发件箱是另一个 folder 行。
+    let next_uid: i64 = conn
+        .query_row(
+            "SELECT COALESCE(MAX(uid), 0) + 1 FROM messages WHERE folder_id = ?1",
+            [folder_id],
+            |row| row.get(0),
+        )
+        .map_err(|err| err.to_string())?;
+
+    let now = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs() as i64)
+        .unwrap_or(0);
+
+    let msg = storage::NewMessage {
+        uid: next_uid,
+        message_id: None,
+        subject: if subject.trim().is_empty() {
+            None
+        } else {
+            Some(subject)
+        },
+        from_name: None,
+        from_address: Some(from_email),
+        to_addresses: Some(recipients.join(", ")),
+        date_unix: now,
+        text_body: Some(body_text),
+        html_body: body_html.filter(|html| !html.trim().is_empty()),
+        attachments: Vec::new(),
+    };
+
+    let message_id =
+        storage::upsert_message(&mut conn, folder_id, &msg).map_err(|err| err.to_string())?;
+    // 自己发的信当然已经读过；否则发件箱会一直显示未读
+    storage::mark_seen(&conn, message_id).map_err(|err| err.to_string())?;
+
+    Ok(SentRecord {
+        folder_id,
+        message_id,
+    })
+}

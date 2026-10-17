@@ -42,6 +42,7 @@ pub fn run() {
             commands::accounts::list_providers,
             commands::accounts::resolve_provider,
             commands::accounts::update_account,
+            commands::compose::record_sent,
             commands::compose::send_mail,
             commands::folders::list_folders,
             commands::messages::get_message,

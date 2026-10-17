@@ -80,14 +80,16 @@ export const ja: Record<Key, string> = {
   "detail.noBody": "(本文なし)",
 
   "compose.title": "メール作成",
+  "compose.from": "送信元アカウント",
   "compose.close": "閉じる",
-  "compose.noAccount": "左側でアカウントを選択してください",
+  "compose.noAccount": "アカウントが未設定です。サイドバーの「アカウント追加」で追加してください。",
   "compose.to": "宛先（複数はカンマ区切り）",
   "compose.subject": "件名",
   "compose.bodyText": "本文（プレーンテキスト）",
   "compose.bodyHtml": "HTML 本文（任意。入力すると multipart/alternative で送信されます）",
   "compose.bodyHtmlPlaceholder": "<p>リッチテキスト本文</p>",
   "compose.send": "送信",
+  "compose.sentFolder": "送信済み",
   "compose.sending": "送信中…",
   "compose.sent": "送信しました",
 
@@ -102,6 +104,11 @@ export const ja: Record<Key, string> = {
   "drafts.forwardTo": "宛先：{value}",
   "drafts.forwardDate": "日時：{value}",
   "drafts.forwardSubject": "件名：{value}",
+
+  "nav.sidebar": "アカウントとフォルダー",
+  "nav.backToList": "一覧に戻る",
+  "nav.openSidebar": "アカウントとフォルダーを開く",
+  "nav.closeSidebar": "サイドバーを閉じる",
 
   "theme.light": "ライトモード",
   "theme.dark": "ダークモード",

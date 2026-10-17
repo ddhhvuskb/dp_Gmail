@@ -8,6 +8,7 @@
 import { useT } from "../../lib/i18n/useT";
 import { useSelection } from "../../stores/selection";
 import ComposeFields from "./ComposeFields";
+import FromAccountField from "./FromAccountField";
 import { useSendMail } from "./useSendMail";
 
 export default function ComposeForm() {
@@ -39,7 +40,8 @@ export default function ComposeForm() {
         </button>
       </header>
 
-      {accountId === null && <p className="field__error">{t("compose.noAccount")}</p>}
+      {/* 发件账户就在写信面板里选，不必回侧栏的「同步」区找 */}
+      <FromAccountField />
 
       <ComposeFields draft={draft} onChange={update} />
 

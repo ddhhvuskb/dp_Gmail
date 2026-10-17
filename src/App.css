@@ -1216,5 +1216,113 @@ body,
   transform: translateX(18px);
 }
 
+/* ── 窄屏：侧栏改抽屉 ─────────────────────────────
+ *
+ * 桌面端三栏并排；屏幕窄于 720px 时：
+ *   - 邮件区只显示「列表 / 详情」二选一（由 `.app[data-nav]` 决定）
+ *   - 侧栏变成从左侧滑出的抽屉，由左上角 ☰ 打开、点遮罩或 × 关闭
+ *
+ * 之前没有这段时三栏最小总宽 320+280=600px，侧栏被挤出屏幕，
+ * 用户连账户都选不了。
+ */
+
+.mobile-bar,
+.drawer-backdrop {
+  display: none;
+}
+
+@media (max-width: 720px) {
+  .app {
+    grid-template-columns: 1fr;
+  }
+
+  /* 列表 / 详情二选一 */
+  .app[data-nav="list"] .app__detail,
+  .app[data-nav="detail"] .app__list {
+    display: none;
+  }
+
+  /* 抽屉：默认滑到屏幕外，打开时归位 */
+  .app__sidebar {
+    position: fixed;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    z-index: 35;
+    width: min(86vw, 340px);
+    /* 给左上角那个浮动的 ☰ / × 让出位置，否则会盖住标题 */
+    padding-top: 56px;
+    overflow-y: auto;
+    transform: translateX(-102%);
+    transition: transform 200ms ease;
+    border-right: 1px solid var(--border);
+  }
+
+  .app[data-drawer="open"] .app__sidebar {
+    transform: none;
+  }
+
+  /* 遮罩盖住邮件区，但不盖住抽屉本身（z-index 低于抽屉） */
+  .drawer-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    background: rgb(0 0 0 / 45%);
+  }
+
+  /* 左上角的 ☰ / × */
+  .mobile-bar {
+    display: inline-flex;
+    position: fixed;
+    top: 10px;
+    left: 10px;
+    z-index: 40;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  /* 邮件区顶部给浮动按钮让出位置 */
+  .app__list,
+  .app__detail {
+    padding-top: 52px;
+  }
+
+  .app__list {
+    border-right: none;
+  }
+
+  /* 返回列表：细节页左上的小按钮 */
+  .mobile-back {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 10px;
+    padding: 6px 10px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 13px;
+    cursor: pointer;
+  }
+
+  /* 写信与设置面板不能被屏幕裁掉 */
+  .compose,
+  .settings__panel {
+    max-width: calc(100vw - 16px);
+  }
+}
+
 
 

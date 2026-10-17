@@ -197,4 +197,25 @@ export const api = {
     bodyHtml: string | null;
     attachments: AttachmentInput[];
   }) => invoke<void>("send_mail", input),
+
+  /**
+   * 把刚发出的一封信记进本地「已发送」。
+   *
+   * 只在**发送成功后**调用；投递失败的信不该出现在已发送里。
+   * 返回的 `folder_id` 供前端直接跳到该文件夹。
+   */
+  recordSent: (
+    accountId: number,
+    to: string[],
+    subject: string,
+    bodyText: string,
+    bodyHtml: string | null,
+  ) =>
+    invoke<{ folder_id: number; message_id: number }>("record_sent", {
+      accountId,
+      to,
+      subject,
+      bodyText,
+      bodyHtml,
+    }),
 };

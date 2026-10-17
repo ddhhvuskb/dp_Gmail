@@ -50,6 +50,20 @@ pub fn upsert_message(
     Ok(message_id)
 }
 
+/// 把一封邮件标记为已读。
+///
+/// 用途：本地「已发送」归档刚写进去时 `is_seen` 默认是 0，
+/// 会让发件箱永远挂着一堆「未读」——自己发的信当然已经读过了。
+///
+/// 不动 `upsert_message` 的插入默认值：那个默认值对**收到的**邮件是对的。
+pub fn mark_seen(conn: &Connection, message_id: i64) -> Result<(), StorageError> {
+    conn.execute(
+        "UPDATE messages SET is_seen = 1 WHERE id = ?1",
+        params![message_id],
+    )?;
+    Ok(())
+}
+
 /// 批量写入同一文件夹的多封邮件，返回写入条数。
 ///
 /// **整个批次共用一个事务** —— 逐封调用 [`upsert_message`] 会开 N 个事务，
