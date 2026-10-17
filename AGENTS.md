@@ -112,7 +112,7 @@
 | ~~滚动帧率~~ | ✅ 2026-10-17 **已实测**：1200 封全列表滚动 200 帧，无一帧超 16.7 ms。见 `docs/tasks/perf-verification.md` §6 |
 | ~~列表硬顶 200 条且无翻页~~ | ✅ 2026-10-17 **已修**：改为按 200 一页增量加载，900 封全部可达；边翻页边滚动 400 帧零掉帧。见 `docs/tasks/perf-verification.md` §6.5 |
 | ~~真实报文 → 解析 → 落库 → FTS 组合链路~~ | ✅ 2026-10-17 补测：21 封真实邮件全部解析成功、落库读回、**FTS 21/21 命中**、重复 upsert 按 uid 去重不翻倍。见 `docs/tasks/live-account-verification.md` §4.1 |
-| ARM64 构建 | ⛔ 仅 CI 首次运行时验证 |
+| ARM64 构建 | ⛔ **仍未验证，且本地做不了**。2026-10-17 尝试过：`rustup target add aarch64-pc-windows-msvc` **已成功**，但 MSVC 的 ARM64 库（`Microsoft.VisualStudio.Component.VC.Tools.ARM64`）装不上 —— `setup.exe modify --quiet` 直接退出，未走到 setup 阶段，`lib\arm64` 始终不存在。需要交互式安装，或给仓库配 GitHub 远端让 CI 真正跑起来 |
 
 **硬性要求：每完成一个任务，必须在任务文档的「尚未验证」小节里如实写明边界。**
 写"已完成"而不写"哪部分没验证"，等于把风险藏起来 —— 这是被明令禁止的。
