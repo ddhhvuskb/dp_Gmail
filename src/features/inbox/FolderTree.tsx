@@ -5,6 +5,7 @@
  */
 
 import type { FolderRecord } from "../../lib/api";
+import { useT } from "../../lib/i18n/useT";
 import { useSelection } from "../../stores/selection";
 
 interface Props {
@@ -16,6 +17,7 @@ export default function FolderTree({ folders, accounts }: Props) {
   const mode = useSelection((state) => state.mode);
   const showFolder = useSelection((state) => state.showFolder);
   const showUnified = useSelection((state) => state.showUnified);
+  const t = useT();
 
   // 统一收件箱按钮**始终**渲染：中栏在空状态下也会提示「点统一收件箱」，
   // 若这里提前 return，那句提示就指向了一个不存在的按钮。
@@ -38,15 +40,16 @@ export default function FolderTree({ folders, accounts }: Props) {
         }`}
         onClick={showUnified}
       >
-        <span className="folder-tree__name">📥 统一收件箱</span>
+        <span className="folder-tree__name">{t("folderTree.unified")}</span>
       </button>
 
-      {!hasFolders && <p className="sidebar__hint">还没有同步过文件夹。</p>}
+      {!hasFolders && <p className="sidebar__hint">{t("folderTree.empty")}</p>}
 
       {[...grouped.entries()].map(([accountId, bucket]) => (
         <div key={accountId} className="folder-tree__group">
           <p className="folder-tree__account">
-            {accounts.find((account) => account.id === accountId)?.label ?? `账户 ${accountId}`}
+            {accounts.find((account) => account.id === accountId)?.label ??
+              t("folderTree.accountFallback", { id: accountId })}
           </p>
           {bucket.map((folder) => {
             const active = mode.kind === "folder" && mode.folderId === folder.id;

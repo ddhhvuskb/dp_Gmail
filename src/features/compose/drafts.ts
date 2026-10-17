@@ -3,8 +3,12 @@
  *
  * 与 `ComposeForm` 分开：这里是**纯函数**，可单独测试；
  * 组件只负责渲染与状态。
+ *
+ * 多语言化后多接一个 `t`：日期按 `t.locale` 格式化，抬头文字取自词典。
+ * 纯函数性质不变 —— `t` 是参数，不是全局状态。
  */
 
+import type { Translator } from "../../lib/i18n";
 import type { MessageView } from "../../lib/api";
 
 /** 回复前缀不会被重复叠加。 */
@@ -20,12 +24,18 @@ function quote(text: string): string {
 }
 
 /** 从已选邮件构造回复草稿。 */
-export function buildReply(message: MessageView): { to: string; subject: string; text: string } {
+export function buildReply(
+  message: MessageView,
+  t: Translator,
+): { to: string; subject: string; text: string } {
   const original = message.text_body ?? "";
   const body = [
     "",
     "",
-    `在 ${new Date(message.date_unix * 1000).toLocaleString("zh-CN")}，${message.from_address ?? "未知发件人"} 写道：`,
+    t("drafts.replyAttribution", {
+      date: new Date(message.date_unix * 1000).toLocaleString(t.locale),
+      sender: message.from_address ?? t("format.unknownSender"),
+    }),
     quote(original),
   ].join("\n");
 
@@ -37,13 +47,20 @@ export function buildReply(message: MessageView): { to: string; subject: string;
 }
 
 /** 从已选邮件构造转发草稿。 */
-export function buildForward(message: MessageView): { to: string; subject: string; text: string } {
+export function buildForward(
+  message: MessageView,
+  t: Translator,
+): { to: string; subject: string; text: string } {
   const header = [
-    "---------- 转发邮件 ----------",
-    `发件人：${message.from_name ?? ""} <${message.from_address ?? ""}>`,
-    `收件人：${message.to_addresses ?? ""}`,
-    `时间：${new Date(message.date_unix * 1000).toLocaleString("zh-CN")}`,
-    `主题：${message.subject ?? ""}`,
+    t("drafts.forwardHeader"),
+    t("drafts.forwardFrom", {
+      value: `${message.from_name ?? ""} <${message.from_address ?? ""}>`,
+    }),
+    t("drafts.forwardTo", { value: message.to_addresses ?? "" }),
+    t("drafts.forwardDate", {
+      value: new Date(message.date_unix * 1000).toLocaleString(t.locale),
+    }),
+    t("drafts.forwardSubject", { value: message.subject ?? "" }),
     "",
   ].join("\n");
 

@@ -3,21 +3,29 @@
  *
  * 从 `App.tsx` 抽出来：它们是**纯函数**，与组件组装无关，
  * 留在壳子里会把 `App` 顶过 100 行上限（`AGENTS.md` 粒度限制）。
+ *
+ * 多语言化后签名多了一个 `t`：本文件**不**自己去 store 取语言，
+ * 这样它仍然是可单测的纯函数。
  */
 
+import type { Translator } from "../../lib/i18n";
 import type { ListMode } from "../../stores/selection";
 
-/** 中栏标题：让人一眼知道当前看的是什么。 */
-export function listTitle(mode: ListMode): string {
+/**
+ * 中栏标题：让人一眼知道当前看的是什么。
+ *
+ * 文件夹名与搜索词是**用户数据**，原样返回，不翻译。
+ */
+export function listTitle(mode: ListMode, t: Translator): string {
   switch (mode.kind) {
     case "folder":
       return mode.label;
     case "unified":
-      return "统一收件箱";
+      return t("list.titleUnified");
     case "search":
-      return `搜索：${mode.query}`;
+      return t("list.titleSearch", { query: mode.query });
     default:
-      return "邮件";
+      return t("list.titleDefault");
   }
 }
 
@@ -27,13 +35,13 @@ export function listTitle(mode: ListMode): string {
  * 必须区分「搜不到」与「文件夹没邮件」：两者都渲染空白中栏的话，
  * 用户分不清是没结果、还在加载、还是界面坏了。
  */
-export function emptyHint(mode: ListMode): string {
+export function emptyHint(mode: ListMode, t: Translator): string {
   switch (mode.kind) {
     case "search":
-      return `没有匹配「${mode.query}」的邮件。`;
+      return t("list.emptySearch", { query: mode.query });
     case "unified":
-      return "统一收件箱里还没有邮件，先同步一个文件夹。";
+      return t("list.emptyUnified");
     default:
-      return "这个文件夹里还没有邮件，先同步一次。";
+      return t("list.emptyFolder");
   }
 }

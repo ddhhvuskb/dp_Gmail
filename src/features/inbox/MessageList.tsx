@@ -8,7 +8,8 @@
 import { useEffect, useRef } from "react";
 import { useVirtualizer } from "@tanstack/react-virtual";
 
-import { formatDateTime, formatSender } from "../../lib/format";
+import { useT } from "../../lib/i18n/useT";
+import MessageRow from "./MessageRow";
 import type { ListRow } from "./useInbox";
 
 /** 行高固定，虚拟化才能用常量估算。 */
@@ -45,6 +46,7 @@ export default function MessageList({
   isLoadingMore,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
+  const t = useT();
 
   const virtualizer = useVirtualizer({
     count: rows.length,
@@ -64,51 +66,30 @@ export default function MessageList({
   }, [lastIndex, rows.length, onLoadMore]);
 
   if (rows.length === 0) {
-    return <p className="app__hint">这里没有邮件。</p>;
+    return <p className="app__hint">{t("list.noMessages")}</p>;
   }
 
   return (
-    <div ref={scrollRef} className="message-list" role="listbox" aria-label="邮件列表">
+    <div ref={scrollRef} className="message-list" role="listbox" aria-label={t("list.listLabel")}>
       <div className="message-list__inner" style={{ height: virtualizer.getTotalSize() }}>
         {virtualRows.map((virtualRow) => {
           const row = rows[virtualRow.index];
           if (!row) {
             return null;
           }
-          const isSelected = row.id === selectedId;
-
           return (
-            <button
+            <MessageRow
               key={row.id}
-              type="button"
-              role="option"
-              aria-selected={isSelected}
-              className={`message-row${isSelected ? " message-row--selected" : ""}${
-                row.is_seen ? "" : " message-row--unread"
-              }`}
-              style={{ height: virtualRow.size, transform: `translateY(${virtualRow.start}px)` }}
-              onClick={() => onSelect(row.id)}
-            >
-              <span className="message-row__line">
-                <span className="message-row__sender">
-                  {formatSender(row.from_name, row.from_address)}
-                </span>
-                <span className="message-row__date">{formatDateTime(row.date_unix)}</span>
-              </span>
-              <span className="message-row__line">
-                <span className="message-row__subject">{row.subject ?? "(无主题)"}</span>
-                {row.attachment_count > 0 && (
-                  <span className="message-row__badge" title="含附件">
-                    📎 {row.attachment_count}
-                  </span>
-                )}
-              </span>
-              {row.source && <span className="message-row__source">{row.source}</span>}
-            </button>
+              row={row}
+              selected={row.id === selectedId}
+              height={virtualRow.size}
+              start={virtualRow.start}
+              onSelect={onSelect}
+            />
           );
         })}
       </div>
-      {isLoadingMore && <p className="app__hint">正在加载更多…</p>}
+      {isLoadingMore && <p className="app__hint">{t("list.loadingMore")}</p>}
     </div>
   );
 }

@@ -7,12 +7,14 @@
 
 import { useState } from "react";
 
+import { useT } from "../../lib/i18n/useT";
 import { useSelection } from "../../stores/selection";
 
 export default function SearchBox() {
   const [draft, setDraft] = useState("");
   const showSearch = useSelection((state) => state.showSearch);
   const clearList = useSelection((state) => state.clearList);
+  const t = useT();
 
   const trimmed = draft.trim();
 
@@ -29,11 +31,11 @@ export default function SearchBox() {
       <input
         value={draft}
         onChange={(event) => setDraft(event.target.value)}
-        placeholder="搜索邮件…"
-        aria-label="搜索邮件"
+        placeholder={t("search.placeholder")}
+        aria-label={t("search.label")}
       />
       <button type="submit" className="button" disabled={trimmed === ""}>
-        搜索
+        {t("search.submit")}
       </button>
       {draft !== "" && (
         <button
@@ -44,7 +46,7 @@ export default function SearchBox() {
             clearList();
           }}
         >
-          清除
+          {t("search.clear")}
         </button>
       )}
     </form>

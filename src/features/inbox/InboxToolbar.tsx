@@ -9,6 +9,7 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { api, type AccountView } from "../../lib/api";
+import { useT } from "../../lib/i18n/useT";
 import { useSelection } from "../../stores/selection";
 
 const DEFAULT_MAILBOX = "INBOX";
@@ -20,6 +21,7 @@ interface Props {
 
 export default function InboxToolbar({ accounts }: Props) {
   const [mailbox, setMailbox] = useState(DEFAULT_MAILBOX);
+  const t = useT();
 
   const accountId = useSelection((state) => state.accountId);
   const setAccount = useSelection((state) => state.setAccount);
@@ -38,7 +40,7 @@ export default function InboxToolbar({ accounts }: Props) {
   return (
     <div className="toolbar">
       <label className="toolbar__field">
-        <span>账户</span>
+        <span>{t("toolbar.account")}</span>
         <select
           value={accountId ?? ""}
           onChange={(event) => {
@@ -46,7 +48,7 @@ export default function InboxToolbar({ accounts }: Props) {
             setAccount(value === "" ? null : Number(value));
           }}
         >
-          <option value="">— 请选择 —</option>
+          <option value="">{t("toolbar.selectPlaceholder")}</option>
           {accounts.map((account) => (
             <option key={account.id} value={account.id}>
               {account.display_name ?? account.email}（{account.provider_name}）
@@ -56,7 +58,7 @@ export default function InboxToolbar({ accounts }: Props) {
       </label>
 
       <label className="toolbar__field">
-        <span>文件夹</span>
+        <span>{t("toolbar.mailbox")}</span>
         <input
           value={mailbox}
           onChange={(event) => setMailbox(event.target.value)}
@@ -70,18 +72,16 @@ export default function InboxToolbar({ accounts }: Props) {
         disabled={accountId === null || mailbox.trim() === "" || sync.isPending}
         onClick={() => sync.mutate()}
       >
-        {sync.isPending ? "同步中…" : "同步"}
+        {sync.isPending ? t("toolbar.syncing") : t("toolbar.sync")}
       </button>
 
       {sync.isError && <p className="toolbar__error">{String(sync.error)}</p>}
       {sync.isSuccess && (
         <p className="toolbar__ok">
-          拉取 {sync.data.fetched} 封，写入 {sync.data.stored} 封
+          {t("toolbar.syncReport", { fetched: sync.data.fetched, stored: sync.data.stored })}
         </p>
       )}
-      {accounts.length === 0 && (
-        <p className="toolbar__hint">先在左侧「添加账户」里配置一个邮箱。</p>
-      )}
+      {accounts.length === 0 && <p className="toolbar__hint">{t("toolbar.noAccounts")}</p>}
     </div>
   );
 }

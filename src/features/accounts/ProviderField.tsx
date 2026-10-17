@@ -9,6 +9,7 @@
  */
 
 import type { ProviderView } from "../../lib/api";
+import { useT } from "../../lib/i18n/useT";
 import { useProviders } from "./useProviders";
 
 interface Props {
@@ -23,11 +24,16 @@ interface Props {
 
 export default function ProviderField({ detected, settled, manualId, onManualChange }: Props) {
   const providers = useProviders();
+  const t = useT();
 
   if (detected) {
     return (
       <p className="field__ok">
-        已识别：{detected.provider_name}（{detected.imap_host}:{detected.imap_port}）
+        {t("provider.detected", {
+          name: detected.provider_name,
+          host: detected.imap_host,
+          port: detected.imap_port,
+        })}
       </p>
     );
   }
@@ -42,15 +48,17 @@ export default function ProviderField({ detected, settled, manualId, onManualCha
 
   return (
     <>
-      <p className="field__error">未能自动识别该邮箱的服务商，请手动选择</p>
+      <p className="field__error">{t("provider.notDetected")}</p>
       <label className="field">
-        <span>服务商</span>
+        <span>{t("provider.label")}</span>
         <select
           value={manualId}
           disabled={providers.isPending}
           onChange={(event) => onManualChange(event.target.value)}
         >
-          <option value="">{providers.isPending ? "读取中…" : "— 请选择 —"}</option>
+          <option value="">
+            {providers.isPending ? t("provider.loading") : t("provider.placeholder")}
+          </option>
           {(providers.data ?? []).map((provider) => (
             <option key={provider.provider_id} value={provider.provider_id}>
               {provider.provider_name}

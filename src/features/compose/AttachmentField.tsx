@@ -10,6 +10,7 @@
 
 import { open } from "@tauri-apps/plugin-dialog";
 
+import { useT } from "../../lib/i18n/useT";
 import type { ComposeAttachment } from "../../stores/selection";
 
 interface Props {
@@ -24,10 +25,12 @@ function basename(path: string): string {
 }
 
 export default function AttachmentField({ attachments, onChange }: Props) {
+  const t = useT();
+
   async function pick() {
     const selected = await open({
       multiple: true,
-      title: "选择附件",
+      title: t("attachment.pickerTitle"),
     });
     if (!selected) {
       return;
@@ -39,10 +42,10 @@ export default function AttachmentField({ attachments, onChange }: Props) {
 
   return (
     <div className="field">
-      <span>附件</span>
+      <span>{t("attachment.label")}</span>
 
       <button type="button" className="button button--ghost" onClick={() => void pick()}>
-        📎 添加附件
+        {t("attachment.add")}
       </button>
 
       {attachments.length > 0 && (
@@ -55,7 +58,7 @@ export default function AttachmentField({ attachments, onChange }: Props) {
               <button
                 type="button"
                 className="attachment-list__remove"
-                aria-label={`移除 ${item.filename}`}
+                aria-label={t("attachment.remove", { filename: item.filename })}
                 onClick={() => onChange(attachments.filter((_, i) => i !== index))}
               >
                 ×

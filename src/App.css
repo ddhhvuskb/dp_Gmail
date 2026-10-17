@@ -745,3 +745,36 @@ body,
 .theme-toggle:hover {
   border-color: var(--accent);
 }
+
+/* ── 语言选择 ─────────────────────────────────── */
+
+/* 与主题按钮同宽同高，两行叠在一起看起来是一组偏好设置 */
+.language-select {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  margin-bottom: 12px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+}
+
+.language-select__label {
+  flex: none;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.language-select__input {
+  flex: 1;
+  min-width: 0;
+  padding: 2px 4px;
+  border: 1px solid var(--border);
+  background: var(--surface-sunken);
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+

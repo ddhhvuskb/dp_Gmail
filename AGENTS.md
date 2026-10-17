@@ -118,6 +118,7 @@
 | ~~列表硬顶 200 条且无翻页~~ | ✅ 2026-10-17 **已修**：改为按 200 一页增量加载，900 封全部可达；边翻页边滚动 400 帧零掉帧。见 `docs/tasks/perf-verification.md` §6.5 |
 | ~~真实报文 → 解析 → 落库 → FTS 组合链路~~ | ✅ 2026-10-17 补测：21 封真实邮件全部解析成功、落库读回、**FTS 21/21 命中**、重复 upsert 按 uid 去重不翻倍。见 `docs/tasks/live-account-verification.md` §4.1 |
 | ARM64 构建 | ⛔ **仍未验证，且本地做不了**。2026-10-17 尝试过：`rustup target add aarch64-pc-windows-msvc` **已成功**，但 MSVC 的 ARM64 库（`Microsoft.VisualStudio.Component.VC.Tools.ARM64`）装不上 —— `setup.exe modify --quiet` 直接退出，未走到 setup 阶段，`lib\arm64` 始终不存在。需要交互式安装，或给仓库配 GitHub 远端让 CI 真正跑起来 |
+| **英/日界面下的后端报错** | 🟨 2026-10-17 多语言上线后新增。按 `ADR-0005`，`commands/` 的报错**恒为中文**，界面切成英/日后仍显示中文 —— 这是用户已知情接受的取舍。但「切到英文后触发一次真实后端错误、看它确实以中文出现」**没有实测**，目前只有代码事实（`String(err)` 原样渲染）。要验需一次故意失败的同步 |
 
 **硬性要求：每完成一个任务，必须在任务文档的「尚未验证」小节里如实写明边界。**
 写"已完成"而不写"哪部分没验证"，等于把风险藏起来 —— 这是被明令禁止的。
@@ -226,3 +227,20 @@ npx prettier --check "src/**/*.{ts,tsx}"            # 前端格式
 cargo fmt --check                                   # Rust 格式
 cargo test --manifest-path src-tauri/Cargo.toml     # 单测
 ```
+
+### 行数上限也必须每次查
+
+2026-10-17 实测：**4 个组件同时超限**（114 / 112 / 111 / 102 行），
+没有一个是「一次写太长」，全是几轮里各加一两行堆出来的。
+`tsc` 不管行数，所以它永远不会自己暴露。
+
+```powershell
+# React 组件 ≤100 行（AGENTS.md 粒度限制）
+Get-ChildItem src -Recurse -Include *.tsx -File |
+  Where-Object { [System.IO.File]::ReadAllLines($_.FullName).Count -gt 100 } |
+  ForEach-Object { "{0} 行  {1}" -f [System.IO.File]::ReadAllLines($_.FullName).Count, $_.FullName }
+
+# Rust 函数 ≤50 行：靠 code review，没有可靠的自动判据（clippy 无此 lint）
+```
+
+**这条要和 `tsc` 并列，不能等阶段收尾才想起来查。**

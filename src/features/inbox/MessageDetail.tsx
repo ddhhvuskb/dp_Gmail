@@ -10,24 +10,27 @@
  */
 
 import type { MessageView } from "../../lib/api";
-import { formatBytes, formatDateTime, formatSender } from "../../lib/format";
+import { useFormat, useT } from "../../lib/i18n/useT";
 
 interface Props {
   message: MessageView;
 }
 
 export default function MessageDetail({ message }: Props) {
+  const t = useT();
+  const format = useFormat();
+
   return (
     <article className="message-detail">
       <header className="message-detail__header">
-        <h2>{message.subject ?? "(无主题)"}</h2>
+        <h2>{message.subject ?? t("list.noSubject")}</h2>
         <dl>
-          <dt>发件人</dt>
-          <dd>{formatSender(message.from_name, message.from_address)}</dd>
-          <dt>收件人</dt>
+          <dt>{t("detail.from")}</dt>
+          <dd>{format.sender(message.from_name, message.from_address)}</dd>
+          <dt>{t("detail.to")}</dt>
           <dd>{message.to_addresses ?? "—"}</dd>
-          <dt>时间</dt>
-          <dd>{formatDateTime(message.date_unix)}</dd>
+          <dt>{t("detail.date")}</dt>
+          <dd>{format.dateTime(message.date_unix)}</dd>
         </dl>
       </header>
 
@@ -37,7 +40,7 @@ export default function MessageDetail({ message }: Props) {
             <li key={att.filename}>
               📎 {att.filename}
               <span className="message-detail__size">
-                {att.content_type} · {formatBytes(att.size)}
+                {att.content_type} · {format.bytes(att.size)}
               </span>
             </li>
           ))}
@@ -52,7 +55,7 @@ export default function MessageDetail({ message }: Props) {
         />
       ) : (
         <pre className="message-detail__body message-detail__body--text">
-          {message.text_body ?? "(无正文)"}
+          {message.text_body ?? t("detail.noBody")}
         </pre>
       )}
     </article>
