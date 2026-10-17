@@ -60,7 +60,7 @@
 `genuinely_unverified_domains_still_resolve_to_nothing` 这条测试守着的东西 ——
 「未核实就留空」的规矩没变，只是名单变短了。
 
-### 2.4 Outlook / Gmail：**不能用密码登录，不得加入服务商表**
+### 2.4 Outlook：**不能用密码登录，不得加入服务商表**
 
 2026-10-17 实测（不发任何凭证）：
 
@@ -76,11 +76,35 @@ SMTP 侧有个容易误判的细节：STARTTLS **之后**才广告 AUTH，而它
 `250-AUTH LOGIN XOAUTH2` —— **看起来还能用密码**。但收信必须走 IMAP，
 IMAP 已经禁了基础认证，所以整体不可用。
 
-> **不要把 outlook.com / hotmail.com / gmail.com 按密码登录加进 `PROVIDERS`。**
+> **不要把 outlook.com / hotmail.com 按密码登录加进 `PROVIDERS`。**
 > 加进去的唯一效果是让用户看到「登录失败」并以为是自己密码错了 ——
-> 而真正的原因是这些服务商**只接受 OAuth**。
->
-> 它们属于 **P3-02（OAuth）**，不属于本表。
+> 而真正的原因是微软**只接受 OAuth**。它属于 **P3-02（OAuth）**。
+
+### 2.5 Gmail：**支持应用专用密码，与 Outlook 不同**
+
+> ⚠️ **本条是对上一版的更正。** 上一版把 Gmail 和 Outlook 归成一类，
+> 写了「Gmail 也不能用密码」—— **那是错的**，没有实测就照抄了结论。
+
+2026-10-17 实测：
+
+```text
+imap.gmail.com:993
+  * CAPABILITY IMAP4rev1 UNSELECT IDLE NAMESPACE QUOTA ID XLIST CHILDREN
+    X-GM-EXT-1 XYZZY SASL-IR AUTH=XOAUTH2 AUTH=PLAIN AUTH=PLAIN-CLIENTTOKEN AUTH=OAUTHBEARER
+  a2 LOGIN <fake>  →  a2 NO [AUTHENTICATIONFAILED] Invalid credentials
+```
+
+两处关键差别：
+
+1. **广告了 `AUTH=PLAIN`，且没有 `LOGINDISABLED`**；
+2. 假 LOGIN 的回应是「**凭证无效**」，**不是**「基础认证已禁用」——
+   说明服务器**愿意评估密码凭证**。
+
+结论：**Gmail 在开启两步验证后生成的「应用专用密码」应当可用**，
+前提是用户开两步验证并在 <https://myaccount.google.com/apppasswords> 生成 16 位应用密码。
+（**尚未用真实应用密码跑通过** —— 本条只到「服务器愿意接受密码」这一步。）
+
+另注：Gmail 的 `CAPABILITY` 里也含 `ID`，故 `send_client_id_if_supported` 对它同样会触发。
 
 另注：微软和谷歌的 OAuth 都需要**在服务商侧注册应用**拿 client id，
 这一步只能由账号持有人完成，不是代码能解决的。
