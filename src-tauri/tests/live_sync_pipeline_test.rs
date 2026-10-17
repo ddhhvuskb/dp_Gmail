@@ -14,8 +14,10 @@ use std::env;
 use dp_gmail::mail::parser::parse_message;
 use dp_gmail::mail::provider::resolve_by_email;
 use dp_gmail::mail::sync::{fetch_recent, to_new_message};
+use dp_gmail::security::{decrypt_secret, encrypt_secret, load_or_create_key};
 use dp_gmail::storage::{
-    create_account, ensure_folder, list_messages, open_database, search_messages, upsert_messages,
+    create_account, ensure_folder, list_messages, load_account_credentials, open_database,
+    search_messages, upsert_messages,
 };
 
 fn credentials() -> (String, String) {
@@ -126,6 +128,77 @@ async fn live_real_messages_survive_the_whole_storage_pipeline() {
         .filter(|(_, m)| !m.attachments.is_empty())
         .count();
     println!("[落库] 其中带附件的真实邮件 {with_attachments} 封");
+
+    drop(conn);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// 凭据往返：授权码经 AES-256-GCM 加密落库，取回解密后**仍然真的能登录**。
+///
+/// 这条补的是 `commands::sync` 的**第一段**（读身份 + 解密凭证）。
+/// 此前：`security` 的加解密有单测、`fetch_recent` 有真机测，
+/// 但「**加密进库的那串东西，解密出来还认不认**」没有人连起来跑过。
+///
+/// 复刻 `sync_folder` 的三段式编排，只把 `AppState` 换成本地临时库 ——
+/// 剩下没被覆盖的只有 Tauri 的 `State` 注入与 IPC 序列化。
+#[tokio::test]
+#[ignore = "真机：需要真实授权码；只写临时库，不碰应用数据库"]
+async fn live_encrypted_credential_still_authenticates() {
+    let (user, secret) = credentials();
+    let cfg = resolve_by_email(&user).expect("该邮箱域名不在 provider 表里");
+
+    let dir = env::temp_dir().join(format!("dp_gmail_cred_{}", std::process::id()));
+    std::fs::create_dir_all(&dir).expect("建临时目录失败");
+    let db_path = dir.join("cred.sqlite");
+    for suffix in ["", "-wal", "-shm"] {
+        let _ = std::fs::remove_file(format!("{}{suffix}", db_path.display()));
+    }
+    let key_path = dir.join("key.json");
+    let _ = std::fs::remove_file(&key_path);
+
+    let key = load_or_create_key(&key_path).expect("生成密钥失败");
+    let encrypted = encrypt_secret(&secret, &key).expect("加密失败");
+    assert_ne!(
+        encrypted.as_slice(),
+        secret.as_bytes(),
+        "落库的必须是密文，不能是明文"
+    );
+
+    let mut conn = open_database(&db_path).expect("建库失败");
+    let account_id = create_account(&conn, &user, Some("凭据往返验证"), cfg.id, Some(&encrypted))
+        .expect("建账户失败");
+
+    // ── 复刻 commands::sync 的第一段：读身份 + 解密凭证
+    let record = load_account_credentials(&conn, account_id)
+        .expect("读取账户失败")
+        .expect("账户应当存在");
+    let blob = record.secret_encrypted.expect("应当存有凭证");
+    let decrypted = decrypt_secret(&blob, &key).expect("解密失败");
+    assert_eq!(decrypted, secret, "解密后应当与原文一致");
+
+    // ── 第二段：用**解密出来的**凭证真登录、真取信
+    let fetched = fetch_recent(cfg, &record.email, &decrypted, "INBOX", 3)
+        .await
+        .expect("用解密后的凭证登录失败");
+    println!(
+        "[凭据往返] {} 加密落库 → 解密 → 真实登录成功，取回 {} 封",
+        record.email,
+        fetched.len()
+    );
+
+    // ── 第三段：落库并读回
+    let folder_id = ensure_folder(&conn, account_id, "INBOX").expect("建文件夹失败");
+    let mut batch = Vec::new();
+    for item in &fetched {
+        let parsed = parse_message(&item.raw).expect("解析失败");
+        batch.push(to_new_message(item.uid, &parsed));
+    }
+    let stored = upsert_messages(&mut conn, folder_id, &batch).expect("落库失败");
+    assert_eq!(stored as usize, batch.len());
+
+    let listed = list_messages(&conn, folder_id, 100, 0).expect("读取失败");
+    assert_eq!(listed.len(), batch.len(), "落库后应能全部读回");
+    println!("[凭据往返] 落库并读回 {} 封 ✅", listed.len());
 
     drop(conn);
     let _ = std::fs::remove_dir_all(&dir);
