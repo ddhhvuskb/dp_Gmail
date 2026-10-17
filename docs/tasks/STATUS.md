@@ -315,7 +315,7 @@ src/
 | P0-06 取正文的 `get_message` 命令 | ✅ 已批准并实现 |
 | 应用图标 | ⚠️ 临时信封图标，可随时替换 |
 | ~~QQ 授权码~~ | ✅ **2026-10-17 已解决**：用户提供了账号与授权码，真机收发验证全部通过。见 `live-account-verification.md` |
-| **P3 企业邮箱无法自动识别** | ⏳ 需在「手动选择服务商」与「域名探测」间决策，见 `P3-01-provider-compat.md` §5 |
+| ~~P3 企业邮箱无法自动识别~~ | ✅ **2026-10-17 已决策并实现**：采用方案 A（手动选择服务商），拒绝方案 B（域名探测＝拿凭证戳未知服务器）。见 `docs/adr/ADR-0004-enterprise-mailbox-manual-provider.md` |
 
 ### 依赖关系图（P0）
 
@@ -376,3 +376,4 @@ P0-08 CI（无依赖，可随时做）
 | 2026-10-17 | **修掉列表 200 条硬顶（分页）**：`useListRows` 改 `useInfiniteQuery`，`MessageList` 增 `onLoadMore` 触底信号，`App` 摊平 `pages` 并守住 `fetchNextPage`。**未新增任何依赖**。实测 900 封全部可达，边翻页边滚动 400 帧零掉帧。见 `perf-verification.md` §6.5 |
 | 2026-10-17 | **顺手清掉 3 处 prettier 违规**：`FolderTree.tsx` / `MessageDetail.tsx` / `lib/api.ts` 此前不满足 prettier 格式（`要求1.txt` §5.4 强制 rustfmt + prettier）。`npx prettier --check "src/**/*.{ts,tsx}"` 现已全绿 |
 | 2026-10-17 | **补测存储组合链路**：新增 `live_sync_pipeline_test.rs`（只写临时库），把真实报文走完「解析 → 落库 → 读回 → FTS 检索 → 重复 upsert 去重」。21 封真实邮件全部解析成功、FTS **21/21 命中**、去重不翻倍 |
+| 2026-10-17 | **P3-01 收口（企业邮箱）**：新增 **ADR-0004**。腾讯企业邮 / 网易企业邮 / 阿里云三条目加入服务商表（`domains` 留空，只能手动选）；新增 `list_providers` 命令 + `ProviderField` 组件；`add_account` 增可选 `provider_id`。**地址改用 TLS 实测核实**（证书主机名匹配），不再依赖第三方页面转述。真实窗口验证：企业邮箱域名出现选择器，`qq.com` 仍自动识别不出现 |

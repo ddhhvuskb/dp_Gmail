@@ -35,27 +35,47 @@ pub struct ProviderView {
     pub smtp_port: u16,
 }
 
-/// 由邮箱地址识别服务商。未收录的域名返回 `null`（前端据此提示"暂不支持"）。
-///
-/// 只读、不涉密码、不落库。
-#[tauri::command]
-pub fn resolve_provider(email: String) -> Option<ProviderView> {
-    provider::resolve_by_email(&email).map(|cfg| ProviderView {
+/// `ProviderConfig` → 前端视图。两条命令共用，避免字段各写一遍之后漂移。
+fn to_view(cfg: &'static ProviderConfig) -> ProviderView {
+    ProviderView {
         provider_id: cfg.id.to_owned(),
         provider_name: cfg.display_name.to_owned(),
         imap_host: cfg.imap_host.to_owned(),
         imap_port: cfg.imap_port,
         smtp_host: cfg.smtp_host.to_owned(),
         smtp_port: cfg.smtp_port,
-    })
+    }
+}
+
+/// 由邮箱地址识别服务商。未收录的域名返回 `null`（前端据此提示"暂不支持"）。
+///
+/// 只读、不涉密码、不落库。
+#[tauri::command]
+pub fn resolve_provider(email: String) -> Option<ProviderView> {
+    provider::resolve_by_email(&email).map(to_view)
+}
+
+/// 列出全部服务商，供「自动识别不出来时手动选择」用。
+///
+/// 企业邮箱用的是客户自己的域名，[`provider::resolve_by_email`] 对它**永远**
+/// 返回 `None`。这条命令让那个场景有路可走，而不是死路一条。
+///
+/// 只读、不涉密码、不落库。
+#[tauri::command]
+pub fn list_providers() -> Vec<ProviderView> {
+    provider::PROVIDERS.iter().map(to_view).collect()
 }
 
 /// 校验新增账户的入参，并解析出服务商。
 ///
 /// 这是命令层唯一有逻辑的地方（参数校验），故单独成函数以便独立测试。
+///
+/// `provider_id` 是**用户显式指定**的服务商，优先级高于自动识别：
+/// 企业邮箱用客户自己的域名，自动识别对它无解，只能由用户选。
 pub fn validate_new_account(
     email: &str,
     secret: &str,
+    provider_id: Option<&str>,
 ) -> Result<(String, &'static ProviderConfig), String> {
     let email = email.trim();
     if email.is_empty() {
@@ -65,22 +85,28 @@ pub fn validate_new_account(
         return Err("授权码/密码不能为空".to_owned());
     }
 
-    // 服务商自动识别（DESIGN.md P0-05）。未收录的域名交给用户另想办法，不猜。
-    let provider = provider::resolve_by_email(email)
-        .ok_or_else(|| format!("暂不支持的邮箱服务商：{email}"))?;
+    let provider = match provider_id {
+        Some(id) => provider::find_by_id(id).ok_or_else(|| format!("未知的服务商标识：{id}"))?,
+        // 服务商自动识别（DESIGN.md P0-05）。未收录的域名交给用户另想办法，不猜。
+        None => provider::resolve_by_email(email)
+            .ok_or_else(|| format!("暂不支持的邮箱服务商：{email}"))?,
+    };
 
     Ok((email.to_owned(), provider))
 }
 
 /// 新增一个邮箱账户。密码/授权码经 AES-256-GCM 加密后落库，**不存明文**。
+///
+/// `provider_id` 可选：自动识别不出来时（企业邮箱）由用户显式指定。
 #[tauri::command]
 pub fn add_account(
     state: tauri::State<'_, AppState>,
     email: String,
     secret: String,
     display_name: Option<String>,
+    provider_id: Option<String>,
 ) -> Result<AccountView, String> {
-    let (email, provider) = validate_new_account(&email, &secret)?;
+    let (email, provider) = validate_new_account(&email, &secret, provider_id.as_deref())?;
 
     let encrypted =
         security::encrypt_secret(&secret, &state.crypto_key).map_err(|err| err.to_string())?;

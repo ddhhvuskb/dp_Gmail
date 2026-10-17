@@ -38,6 +38,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             commands::accounts::add_account,
             commands::accounts::list_accounts,
+            commands::accounts::list_providers,
             commands::accounts::resolve_provider,
             commands::compose::send_mail,
             commands::folders::list_folders,

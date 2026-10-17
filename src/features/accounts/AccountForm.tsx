@@ -12,28 +12,40 @@ import { useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { api } from "../../lib/api";
+import ProviderField from "./ProviderField";
 import { useProviderLookup } from "./useProviderLookup";
 
 export default function AccountForm() {
   const [email, setEmail] = useState("");
   const [secret, setSecret] = useState("");
   const [displayName, setDisplayName] = useState("");
+  /** 自动识别不出来时用户手动选的服务商（企业邮箱走这条）。 */
+  const [manualProviderId, setManualProviderId] = useState("");
 
   const lookup = useProviderLookup(email);
+  const detected = lookup.data ?? null;
   const queryClient = useQueryClient();
 
   const add = useMutation({
-    mutationFn: () => api.addAccount(email.trim(), secret, displayName.trim() || undefined),
+    mutationFn: () =>
+      api.addAccount(
+        email.trim(),
+        secret,
+        displayName.trim() || undefined,
+        // 自动识别成功就以它为准；否则用手动选的那个
+        detected ? undefined : manualProviderId || undefined,
+      ),
     onSuccess: async () => {
       setEmail("");
       setSecret("");
       setDisplayName("");
+      setManualProviderId("");
       await queryClient.invalidateQueries({ queryKey: ["accounts"] });
     },
   });
 
-  const detected = lookup.data ?? null;
-  const canSubmit = email.trim() !== "" && secret !== "" && detected !== null && !add.isPending;
+  const hasProvider = detected !== null || manualProviderId !== "";
+  const canSubmit = email.trim() !== "" && secret !== "" && hasProvider && !add.isPending;
 
   return (
     <form
@@ -58,14 +70,12 @@ export default function AccountForm() {
         />
       </label>
 
-      {detected && (
-        <p className="field__ok">
-          已识别：{detected.provider_name}（{detected.imap_host}:{detected.imap_port}）
-        </p>
-      )}
-      {lookup.isSuccess && detected === null && (
-        <p className="field__error">暂不支持该邮箱服务商</p>
-      )}
+      <ProviderField
+        detected={detected}
+        settled={lookup.isSuccess}
+        manualId={manualProviderId}
+        onManualChange={setManualProviderId}
+      />
 
       <label className="field">
         <span>授权码 / 密码</span>

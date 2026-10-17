@@ -110,11 +110,21 @@ export const api = {
   /** 由邮箱地址识别服务商，供表单实时提示。未收录返回 `null`。 */
   resolveProvider: (email: string) => invoke<ProviderView | null>("resolve_provider", { email }),
 
-  addAccount: (email: string, secret: string, displayName?: string) =>
+  /** 全部服务商，供「自动识别不出来时手动选择」用。 */
+  listProviders: () => invoke<ProviderView[]>("list_providers"),
+
+  /**
+   * 新增账户。
+   *
+   * `providerId` 可选：企业邮箱用客户自己的域名，自动识别对它无解，
+   * 只能由用户显式指定。不传则交给后端按域名自动识别。
+   */
+  addAccount: (email: string, secret: string, displayName?: string, providerId?: string) =>
     invoke<AccountView>("add_account", {
       email,
       secret,
       displayName: displayName ?? null,
+      providerId: providerId ?? null,
     }),
 
   /** `accountId` 传 `null` 即列出全部账户的文件夹。 */

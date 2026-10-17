@@ -68,10 +68,22 @@ fn resolves_netease_163_mailbox() {
 fn every_provider_survives_the_command_layer() {
     // 表里以后再加服务商时，这条会自动覆盖到 —— 防止出现
     // "模块表里有、命令层却拿不到" 的断层（例如忘了同步某个字段）。
-    use dp_gmail::mail::provider::PROVIDERS;
+    use dp_gmail::mail::provider::{find_by_id, PROVIDERS};
 
     for provider in PROVIDERS {
-        let address = format!("someone@{}", provider.domains[0]);
+        // 企业邮箱的 `domains` 是空的：它们用的是客户自己的域名，本来就没有
+        // 可自动识别的域名。这类条目只能由用户手动指定 id，走 find_by_id，
+        // 所以在这里跳过 —— 它们由 manual_provider_test.rs 覆盖。
+        let Some(domain) = provider.domains.first() else {
+            assert!(
+                find_by_id(provider.id).is_some(),
+                "无域名的服务商 {} 必须能按 id 取到",
+                provider.id
+            );
+            continue;
+        };
+
+        let address = format!("someone@{domain}");
         let view =
             resolve_provider(address.clone()).unwrap_or_else(|| panic!("{address} 应能穿过命令层"));
 
@@ -81,4 +93,31 @@ fn every_provider_survives_the_command_layer() {
         assert_eq!(view.smtp_host, provider.smtp_host);
         assert_eq!(view.smtp_port, provider.smtp_port);
     }
+}
+
+#[test]
+fn list_providers_exposes_enterprise_entries_too() {
+    use dp_gmail::commands::accounts::list_providers;
+    use dp_gmail::mail::provider::PROVIDERS;
+
+    let listed = list_providers();
+    assert_eq!(listed.len(), PROVIDERS.len(), "下拉列表要覆盖表里每一条");
+
+    // 企业邮箱没有域名、自动识别永远命中不了，但**必须**出现在手动列表里 ——
+    // 否则用户在企业邮箱场景下依然无路可走，这个特性就白做了。
+    for id in ["exmail_qq", "qiye_163", "aliyun_mail"] {
+        let found = listed
+            .iter()
+            .find(|p| p.provider_id == id)
+            .unwrap_or_else(|| panic!("手动列表里缺少企业邮箱条目 {id}"));
+        assert!(!found.provider_name.is_empty(), "{id} 没有显示名");
+        assert!(!found.imap_host.is_empty(), "{id} 没有 IMAP 地址");
+        assert_ne!(found.imap_port, 0, "{id} 的 IMAP 端口是 0");
+    }
+
+    let mut ids: Vec<&str> = listed.iter().map(|p| p.provider_id.as_str()).collect();
+    ids.sort_unstable();
+    let before = ids.len();
+    ids.dedup();
+    assert_eq!(ids.len(), before, "列表里出现重复服务商：{ids:?}");
 }

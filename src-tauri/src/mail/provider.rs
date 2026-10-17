@@ -32,6 +32,13 @@ pub struct ProviderConfig {
 ///
 /// 每条地址的核实来源见 `docs/tasks/P3-01-provider-compat.md` §2。
 /// 未核实的服务商**不得**加入本表 —— 填错一个主机名会让用户以为是自己密码错了。
+///
+/// 表里有两类条目，区别就在 `domains`：
+///
+/// | 类别 | `domains` | 怎么被选中 |
+/// | --- | --- | --- |
+/// | 个人邮箱 | 非空 | [`resolve_by_email`] 按域名**自动识别** |
+/// | 企业邮箱 | **空** | 用客户自己的域名，自动识别无解 ⇒ 由用户**手动指定 id** |
 pub const PROVIDERS: &[ProviderConfig] = &[
     ProviderConfig {
         id: "qq",
@@ -52,6 +59,50 @@ pub const PROVIDERS: &[ProviderConfig] = &[
         imap_port: 993,
         imap_tls: TlsMode::Implicit,
         smtp_host: "smtp.163.com",
+        smtp_port: 465,
+        smtp_tls: TlsMode::Implicit,
+    },
+    // ---- 以下为企业邮箱：**无法**用域名自动识别，只能由用户手动选择 ----
+    //
+    // 企业邮箱用的是客户自己的域名，故 `domains` 留空 ⇒ `resolve_by_email`
+    // 永不匹配它们，只能经 `find_by_id` 由用户显式指定。
+    //
+    // 地址来源：2026-10-17 用 TLS **实测**（TCP 连通 + 证书主机名校验 + 协议 banner），
+    // 不是转述第三方页面 —— 证书主机名匹配即证明该地址确实是这家服务商的。
+    // 实测记录见 `docs/tasks/P3-01-provider-compat.md` §2.2。
+    //
+    // **新增条目必须追加在末尾**：多处测试以 `PROVIDERS[0]` 为基准，插到前面会改基准。
+    ProviderConfig {
+        id: "exmail_qq",
+        display_name: "腾讯企业邮",
+        domains: &[],
+        imap_host: "imap.exmail.qq.com",
+        imap_port: 993,
+        imap_tls: TlsMode::Implicit,
+        smtp_host: "smtp.exmail.qq.com",
+        smtp_port: 465,
+        smtp_tls: TlsMode::Implicit,
+    },
+    ProviderConfig {
+        id: "qiye_163",
+        display_name: "网易企业邮",
+        domains: &[],
+        imap_host: "imap.qiye.163.com",
+        imap_port: 993,
+        imap_tls: TlsMode::Implicit,
+        // 994 是实测确认的端口。**别照抄常见的 465** —— 这条是撞过的坑。
+        smtp_host: "smtp.qiye.163.com",
+        smtp_port: 994,
+        smtp_tls: TlsMode::Implicit,
+    },
+    ProviderConfig {
+        id: "aliyun_mail",
+        display_name: "阿里云企业邮箱",
+        domains: &[],
+        imap_host: "imap.mxhichina.com",
+        imap_port: 993,
+        imap_tls: TlsMode::Implicit,
+        smtp_host: "smtp.mxhichina.com",
         smtp_port: 465,
         smtp_tls: TlsMode::Implicit,
     },
