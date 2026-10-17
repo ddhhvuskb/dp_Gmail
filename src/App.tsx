@@ -13,6 +13,7 @@ import MessageDetail from "./features/inbox/MessageDetail";
 import MessageList from "./features/inbox/MessageList";
 import SearchBox from "./features/inbox/SearchBox";
 import { useAccounts, useFolders, usePagedRows, useMessage } from "./features/inbox/useInbox";
+import ThemeToggle from "./features/settings/ThemeToggle";
 import { useSelection } from "./stores/selection";
 
 export default function App() {
@@ -36,6 +37,8 @@ export default function App() {
     <div className="app">
       <aside className="app__sidebar">
         <h1 className="app__title">dp_Gmail</h1>
+
+        <ThemeToggle />
 
         <button type="button" className="button" onClick={() => openCompose()}>
           ✏️ 写邮件
