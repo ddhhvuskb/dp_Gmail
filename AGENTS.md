@@ -179,7 +179,7 @@ PowerShell 5.1 的控制台以 GBK 解码，**读取 UTF-8 文件时中文必然
 | --- | --- |
 | 硬编码服务器地址/端口 | 必须从 `mail/provider.rs` 读 |
 | 在 `localStorage` 存密码 | 凭证只走 `security/` 加密存储 |
-| 直接 `dangerouslySetInnerHTML` | HTML 必须先经 `security/` 净化 |
+| **直接**（即未经净化地）用 `dangerouslySetInnerHTML` | `要求1.txt` P0-06 三列表头是「任务 / 关键约束 / **禁止**」：关键约束写「虚拟滚动，**HTML 净化**」，禁止项写「**直接**使用 dangerouslySetInnerHTML」。⇒ **净化后渲染就是要求本身**，禁的是裸用。当前实现（后端 `security/` 用 ammonia 净化后再下发）**合规**，且经 XSS 端到端验证。**本条曾被误读为「绝对不许出现该属性」，特此更正** |
 | 用 ORM / 省略事务 | P0-03 规定纯 SQL + 事务 |
 | 手动实现编码转换 | 交给 `mail-parser` |
 | 硬编码密钥 / ECB 模式 | P0-07 规定 AES-256-GCM + 密钥文件 |

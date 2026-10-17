@@ -1,5 +1,6 @@
 /** 收件箱的数据访问 hooks。 */
 
+import { useCallback, useMemo } from "react";
 import { useInfiniteQuery, useQuery } from "@tanstack/react-query";
 
 import { api } from "../../lib/api";
@@ -88,6 +89,26 @@ export function useListRows(mode: ListMode, accountId: number | null) {
       return lastPage.length < PAGE_SIZE ? undefined : lastPageParam + PAGE_SIZE;
     },
   });
+}
+
+/**
+ * 把无限查询的原始结果整理成组件真正要用的两样东西：摊平的行、取下一页。
+ *
+ * 放在数据层而不是 `App` 里：外壳不该知道分页游标怎么算，
+ * 也不该为了「哪些行要显示」写 `useMemo`。
+ */
+export function usePagedRows(mode: ListMode, accountId: number | null) {
+  const query = useListRows(mode, accountId);
+
+  const rows = useMemo(() => query.data?.pages.flat() ?? [], [query.data]);
+
+  const loadMore = useCallback(() => {
+    if (query.hasNextPage && !query.isFetchingNextPage) {
+      void query.fetchNextPage();
+    }
+  }, [query.hasNextPage, query.isFetchingNextPage, query.fetchNextPage]);
+
+  return { query, rows, loadMore };
 }
 
 export function useMessage(messageId: number | null) {

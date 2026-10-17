@@ -2,50 +2,18 @@
  * 应用外壳：侧栏（账户配置 + 同步 + 文件夹树）+ 邮件列表 + 详情 + 写信面板。
  */
 
-import { useCallback, useMemo } from "react";
-
 import AccountForm from "./features/accounts/AccountForm";
 import AccountList from "./features/accounts/AccountList";
 import ComposeForm from "./features/compose/ComposeForm";
 import { buildForward, buildReply } from "./features/compose/drafts";
 import FolderTree from "./features/inbox/FolderTree";
 import InboxToolbar from "./features/inbox/InboxToolbar";
+import { emptyHint, listTitle } from "./features/inbox/listLabels";
 import MessageDetail from "./features/inbox/MessageDetail";
 import MessageList from "./features/inbox/MessageList";
 import SearchBox from "./features/inbox/SearchBox";
-import { useAccounts, useFolders, useListRows, useMessage } from "./features/inbox/useInbox";
-import { useSelection, type ListMode } from "./stores/selection";
-
-/** 中栏标题：让人一眼知道当前看的是什么。 */
-function listTitle(mode: ListMode): string {
-  switch (mode.kind) {
-    case "folder":
-      return mode.label;
-    case "unified":
-      return "统一收件箱";
-    case "search":
-      return `搜索：${mode.query}`;
-    default:
-      return "邮件";
-  }
-}
-
-/**
- * 列表为空时的提示。
- *
- * 必须区分「搜不到」与「文件夹没邮件」：两者都渲染空白中栏的话，
- * 用户分不清是没结果、还在加载、还是界面坏了。
- */
-function emptyHint(mode: ListMode): string {
-  switch (mode.kind) {
-    case "search":
-      return `没有匹配「${mode.query}」的邮件。`;
-    case "unified":
-      return "统一收件箱里还没有邮件，先同步一个文件夹。";
-    default:
-      return "这个文件夹里还没有邮件，先同步一次。";
-  }
-}
+import { useAccounts, useFolders, usePagedRows, useMessage } from "./features/inbox/useInbox";
+import { useSelection } from "./stores/selection";
 
 export default function App() {
   const accounts = useAccounts();
@@ -56,18 +24,8 @@ export default function App() {
   const openCompose = useSelection((state) => state.openCompose);
 
   const folders = useFolders(accountId);
-  const rows = useListRows(mode, accountId);
+  const { query: rows, rows: rowList, loadMore } = usePagedRows(mode, accountId);
   const message = useMessage(messageId);
-
-  // 无限查询把结果按页放在 pages 里，这里摊平成一个数组交给列表渲染
-  const rowList = useMemo(() => rows.data?.pages.flat() ?? [], [rows.data]);
-
-  // 列表只负责喊「快到底了」；该不该真去取下一页由这里判断
-  const loadMore = useCallback(() => {
-    if (rows.hasNextPage && !rows.isFetchingNextPage) {
-      void rows.fetchNextPage();
-    }
-  }, [rows.hasNextPage, rows.isFetchingNextPage, rows.fetchNextPage]);
 
   const accountOptions = (accounts.data ?? []).map((account) => ({
     id: account.id,
@@ -113,6 +71,7 @@ export default function App() {
             selectedId={messageId}
             onSelect={selectMessage}
             onLoadMore={loadMore}
+            isLoadingMore={rows.isFetchingNextPage}
           />
         )}
       </section>

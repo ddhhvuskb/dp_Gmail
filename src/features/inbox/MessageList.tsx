@@ -28,9 +28,22 @@ interface Props {
    * 否则它就得知道分页游标、请求状态等一堆与渲染无关的东西。
    */
   onLoadMore?: () => void;
+  /**
+   * 正在取下一页。
+   *
+   * 没有这个提示的话，网络慢时列表看起来就是「到头了」——
+   * 用户不会去区分「只有这么多」和「还在取」。
+   */
+  isLoadingMore?: boolean;
 }
 
-export default function MessageList({ rows, selectedId, onSelect, onLoadMore }: Props) {
+export default function MessageList({
+  rows,
+  selectedId,
+  onSelect,
+  onLoadMore,
+  isLoadingMore,
+}: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const virtualizer = useVirtualizer({
@@ -95,6 +108,7 @@ export default function MessageList({ rows, selectedId, onSelect, onLoadMore }: 
           );
         })}
       </div>
+      {isLoadingMore && <p className="app__hint">正在加载更多…</p>}
     </div>
   );
 }
