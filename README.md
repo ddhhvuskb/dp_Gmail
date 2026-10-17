@@ -2,6 +2,25 @@
 
 本地优先的跨平台邮件客户端。邮件与授权码只存在你自己的电脑上，不经任何中转服务器。
 
+## 下载
+
+不装开发环境也想用的话，直接下现成的安装包：
+
+| 平台 | 文件 | 大小 |
+| --- | --- | --- |
+| **Android 7.0+** | [`dp_Gmail-android.apk`](https://github.com/ddhhvuskb/dp_Gmail/releases/download/v0.1.0/dp_Gmail-android.apk) | 27.81 MB |
+| **Windows x64**（安装版） | [`dp_Gmail-windows-setup.exe`](https://github.com/ddhhvuskb/dp_Gmail/releases/download/v0.1.0/dp_Gmail-windows-setup.exe) | 3.42 MB |
+| **Windows x64**（免安装） | [`dp_Gmail-windows-portable.exe`](https://github.com/ddhhvuskb/dp_Gmail/releases/download/v0.1.0/dp_Gmail-windows-portable.exe) | 13.07 MB |
+
+全部版本见 [**Releases**](https://github.com/ddhhvuskb/dp_Gmail/releases)。
+
+**装之前请读 [`INTRODUCTION.md`](INTRODUCTION.md)** —— 里面有逐条列出的限制，
+其中几条会直接影响你能否用起来（比如安卓版连不上新浪邮箱的 IMAP）。
+
+> **两个包都没有代码签名证书。** Windows 首次运行会提示「未知发布者」，
+> 点「更多信息」→「仍要运行」；安卓包是自签名，安装时需允许「未知来源应用」。
+> 这不是程序有问题。
+
 ## 这是什么
 
 一个能真正收发邮件的桌面 + 安卓客户端，用 Tauri v2 + Rust + React + SQLite 写成。
