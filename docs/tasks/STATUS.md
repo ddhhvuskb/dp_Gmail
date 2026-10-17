@@ -48,10 +48,10 @@ RUSTUP_UPDATE_ROOT=https://rsproxy.cn/rustup
 | P0-07b | `security/credentials.rs` AES-256-GCM | ✅ | `cargo test --test credentials_test` | **8/8** |
 | P0-07c | `accounts.secret_encrypted` + schema 迁移 + 账户读写 | ✅ | `cargo test --test schema_migration_test`、`account_store_test` | **5/5 + 6/6** |
 | P0-07d | `commands::add_account`（原 P0-04） | ✅ | `cargo test --test add_account_test` | **7/7** |
-| P0-07e | `commands::sync_folder`（原 P0-04d） | ✅ | `cargo test --test sync_support_test` | **11/11**；IMAP 段待真机联调 |
-| P0-05 | 账户配置界面（服务商自动识别，不存明文密码） | ✅ | `tsc --noEmit` + `cargo test` | **5/5**；UI 未在真实窗口跑过 |
-| P0-06 | 邮件列表 + 详情（虚拟滚动，HTML 净化） | ✅ | `tsc --noEmit` + `cargo test` | **5/5 + 5/5**；UI 未在真实窗口跑过 |
-| P0-08 | CI 构建 Windows x64 + ARM64 | ✅ | YAML 校验 + 本地实跑 | 工作流落地；x64 release 构建已验证，**ARM64 仅在 CI 首次运行时验证** |
+| P0-07e | `commands::sync_folder`（原 P0-04d） | ✅ | `cargo test --test sync_support_test` | **11/11**；IMAP 段**已真机联调**（2026-10-17 真收信 + 自寄闭环） |
+| P0-05 | 账户配置界面（服务商自动识别，不存明文密码） | ✅ | `tsc --noEmit` + `cargo test` | **5/5**；UI **已实跑验证**，含 2026-10-17 的企业邮箱手动选择 |
+| P0-06 | 邮件列表 + 详情（虚拟滚动，HTML 净化） | ✅ | `tsc --noEmit` + `cargo test` | **5/5 + 5/5**；UI **已实跑验证**；滚动帧率**已实测**（1200 封零掉帧），虚拟滚动 + XSS 净化端到端确认 |
+| P0-08 | CI 构建 Windows x64 + ARM64 | 🟨 | YAML 校验 + 本地实跑 | 工作流落地；x64 release 构建已验证。**ARM64 未验证，且本地做不了**（缺 MSVC ARM64 库；CI 没有远端，从未跑过）。见 `AGENTS.md` 验证债表 |
 
 ### 累计测试：**116 全绿**
 
