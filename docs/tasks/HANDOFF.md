@@ -176,10 +176,17 @@ npm run tauri dev
 
 按「需要你决定」排序，不是按工作量：
 
-1. **P4-02 前端单测要不要做**（需批准 vitest）—— 目前 `drafts.ts`、`listLabels.ts`、`format.ts` 三处纯逻辑零覆盖。
-2. **P3-02 OAuth** 要不要做（需你去注册应用）。
-3. **ARM64** 怎么办：装 VS 组件，还是配 GitHub 远端让 CI 跑。
-4. 剩下的都是验证债，不是功能缺口 —— 见 §4。
+1. **Android 移植（进行中）** —— 方案已定：**桌面 native-tls，Android rustls**（C3）。
+   落地细节、Cargo 配置、必须接受的行为差异、验证要求，全部写在
+   `docs/adr/ADR-0006-android-port.md` **§9.6**，照它做即可。
+   当前状态：工具链齐（SDK/NDK/JDK/Perl 都在），两个模拟器已建（D 盘），
+   `tauri android init` 已跑过，但**还没有 APK**，单栏布局也**还没做**。
+2. **P4-02 前端单测要不要做**（需批准 vitest）—— `drafts.ts`、`listLabels.ts`、`format.ts` 三处纯逻辑零覆盖。
+3. **P3-02 OAuth** 要不要做（需你去 Azure/服务商侧注册应用）。调研到
+   [`tauri-plugin-auth-session`](https://docs.rs/crate/tauri-plugin-auth-session/0.2.1)
+   是 Tauri 生态里现成的「开浏览器 + 等回调」插件，但属新依赖 + 要改 DB schema 存 token。
+4. **ARM64** 怎么办：装 VS 组件，还是配 GitHub 远端让 CI 跑。
+5. 剩下的都是验证债，不是功能缺口 —— 见 §4。
 
 ---
 

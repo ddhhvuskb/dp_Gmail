@@ -240,3 +240,52 @@ OpenSSL 的 `Configure` 要求宿主 perl 输出 **Unix 风格路径**；原生 
 **推荐 C3**：它是唯一能把「已真机验证过的桌面端」原样保住的方案，
 代价只是安卓上少一家服务商的收信能力，且这条限制可以如实写在界面上。
 
+### 9.6 决定：走 C3（2026-10-17，用户确认）
+
+**桌面用 native-tls（SChannel），Android 用 rustls。**
+
+#### 落地方式（下一步照这个做）
+
+不要在两处写 `#[cfg]` 散弹，而是抽一个极薄的**内部 TLS 抽象**，
+让 `imap_client` 与 `lettre` 各自按目标选实现：
+
+```toml
+[target.'cfg(not(target_os = "android"))'.dependencies]
+async-native-tls = { version = "0.6", default-features = false, features = ["runtime-tokio"] }
+lettre = { version = "0.11", features = ["tokio1-native-tls"] }
+
+[target.'cfg(target_os = "android")'.dependencies]
+rustls = { version = "0.23", default-features = false, features = ["ring", "std", "tls12"] }
+tokio-rustls = { version = "0.26", default-features = false, features = ["ring", "tls12"] }
+webpki-roots = "0.26"
+lettre = { version = "0.11", default-features = false, features = [
+  "smtp-transport", "pool", "hostname", "builder", "tokio1-rustls-tls",
+] }
+```
+
+Cargo 允许同一个 crate 在两个 target 段里声明不同 feature，实际只会生效一个。
+
+代码侧新增 `src-tauri/src/mail/tls.rs`，对外只暴露两样东西：
+
+```rust
+pub type TlsStream = ...;                       // 两套实现各给一个具体类型
+pub async fn connect(host: &str, tcp: TcpStream) -> Result<TlsStream, MailError>;
+```
+
+`imap_client.rs` 只调 `tls::connect`，不认后端；`MailError` 的 TLS 变体用
+`String` 承载（两个后端的错误类型不同，且 `Io` 已占了 `From<std::io::Error>`）。
+
+#### 必须接受的行为差异（写进界面，不许藏着）
+
+| 平台 | 后果 |
+| --- | --- |
+| 桌面（SChannel） | 8 家全通，sina 正常 |
+| **Android（rustls）** | **sina 的 IMAP 连不上**（`HandshakeFailure`）。需要在同步失败时给一句可读的提示，而不是抛一句英文 TLS 错误 |
+
+#### 验证要求（两条都不能省）
+
+1. **桌面**：`cargo test` 全绿 + 三家真机登录复验（163 / sina / QQ），证明没被 cfg 改动弄坏
+2. **Android**：`tauri android build --apk --target aarch64` 出包，装到模拟器/真机上能启动、能登录、能收信
+3. **sina 在安卓上的失败必须实测一次**，确认提示是那句可读的话，而不是白屏或崩溃
+
+
