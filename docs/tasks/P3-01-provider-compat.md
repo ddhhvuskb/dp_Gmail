@@ -60,6 +60,31 @@
 `genuinely_unverified_domains_still_resolve_to_nothing` 这条测试守着的东西 ——
 「未核实就留空」的规矩没变，只是名单变短了。
 
+### 2.4 Outlook / Gmail：**不能用密码登录，不得加入服务商表**
+
+2026-10-17 实测（不发任何凭证）：
+
+```text
+imap-mail.outlook.com:993 / outlook.office365.com:993
+  * CAPABILITY ... AUTH=XOAUTH2 LOGINDISABLED SASL-IR ...
+  a2 LOGIN <fake>  →  a2 NO Basic authentication is disabled.
+```
+
+`LOGINDISABLED` 是服务器**明说不要试 LOGIN**，且只广告 `AUTH=XOAUTH2`。
+
+SMTP 侧有个容易误判的细节：STARTTLS **之后**才广告 AUTH，而它仍然写
+`250-AUTH LOGIN XOAUTH2` —— **看起来还能用密码**。但收信必须走 IMAP，
+IMAP 已经禁了基础认证，所以整体不可用。
+
+> **不要把 outlook.com / hotmail.com / gmail.com 按密码登录加进 `PROVIDERS`。**
+> 加进去的唯一效果是让用户看到「登录失败」并以为是自己密码错了 ——
+> 而真正的原因是这些服务商**只接受 OAuth**。
+>
+> 它们属于 **P3-02（OAuth）**，不属于本表。
+
+另注：微软和谷歌的 OAuth 都需要**在服务商侧注册应用**拿 client id，
+这一步只能由账号持有人完成，不是代码能解决的。
+
 ### 2.4 STARTTLS 支持情况（2026-10-17 实测，非文档转述）
 
 加新服务商时**必须实测**这一项 —— 端口号相同的两个服务商，STARTTLS 支持可能相反：
