@@ -12,8 +12,13 @@ pub enum MailError {
     #[error("邮件解析失败：不是合法的 RFC5322 报文")]
     Parse,
 
+    /// TLS 失败。
+    ///
+    /// 存 `String` 而不是接具体后端错误，两个原因：
+    /// 1. 桌面用 native-tls、Android 用 rustls，两者的错误类型不同（ADR-0006 §9.6）；
+    /// 2. `Io` 已经占了 `From<std::io::Error>`，再加一个同类型的 `#[from]` 会冲突。
     #[error("TLS 错误：{0}")]
-    Tls(#[from] async_native_tls::Error),
+    Tls(String),
 
     #[error("IMAP 协议错误：{0}")]
     Imap(#[from] async_imap::error::Error),

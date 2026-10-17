@@ -4,11 +4,11 @@
 
 use std::time::Duration;
 
-use async_native_tls::TlsStream;
 use tokio::net::TcpStream;
 
 use super::error::MailError;
 use super::provider::{ProviderConfig, TlsMode};
+use super::tls;
 
 /// 连接超时。来源：`DESIGN.md` P0-01 关键约束「超时 30s」。
 pub const IMAP_TIMEOUT_SECS: u64 = 30;
@@ -16,10 +16,10 @@ pub const IMAP_TIMEOUT_SECS: u64 = 30;
 /// 已登录的 IMAP 会话。
 ///
 /// `async-imap` 在 `runtime-tokio` 下用的是 tokio 的 io trait
-/// （见其 `client.rs`：`use tokio::io::{AsyncRead as Read, AsyncWrite as Write}`），
-/// `async-native-tls` 在 `runtime-tokio` 下产出的正是一个 tokio 流，
-/// 两者可直接对接，**不需要** futures-io 兼容层。
-pub type ImapSession = async_imap::Session<TlsStream<TcpStream>>;
+/// （见其 `client.rs`：`use tokio::io::{AsyncRead as Read, AsyncWrite as Write}`）。
+/// 流的具体类型由 [`super::tls`] 按平台给（桌面 native-tls / Android rustls），
+/// 两者产出的都是 tokio 流，**不需要** futures-io 兼容层。
+pub type ImapSession = async_imap::Session<tls::TlsStream>;
 
 /// 在 30 秒内建立 TLS 连接、读取问候语并登录。
 ///
@@ -41,12 +41,11 @@ pub async fn connect_and_login(
 ) -> Result<ImapSession, MailError> {
     let handshake = async {
         let tcp = TcpStream::connect((cfg.imap_host, cfg.imap_port)).await?;
-        let connector = async_native_tls::TlsConnector::new();
 
         let client = match cfg.imap_tls {
             TlsMode::Implicit => {
-                let tls = connector.connect(cfg.imap_host, tcp).await?;
-                let mut client = async_imap::Client::new(tls);
+                let stream = tls::connect(cfg.imap_host, tcp).await?;
+                let mut client = async_imap::Client::new(stream);
                 read_greeting(&mut client).await?;
                 client
             }
@@ -57,8 +56,8 @@ pub async fn connect_and_login(
                 plain.run_command_and_check_ok("STARTTLS", None).await?;
 
                 // 升级：取出裸流重新套 TLS，再构造一个新的 Client
-                let upgraded = connector.connect(cfg.imap_host, plain.into_inner()).await?;
-                async_imap::Client::new(upgraded)
+                let stream = tls::connect(cfg.imap_host, plain.into_inner()).await?;
+                async_imap::Client::new(stream)
             }
         };
 

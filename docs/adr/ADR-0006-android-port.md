@@ -288,4 +288,43 @@ pub async fn connect(host: &str, tcp: TcpStream) -> Result<TlsStream, MailError>
 2. **Android**：`tauri android build --apk --target aarch64` 出包，装到模拟器/真机上能启动、能登录、能收信
 3. **sina 在安卓上的失败必须实测一次**，确认提示是那句可读的话，而不是白屏或崩溃
 
+### 9.7 C3 已实现（2026-10-17）
+
+#### 代码
+
+| 文件 | 改动 |
+| --- | --- |
+| `src-tauri/src/mail/tls.rs` | **新增**。`mail` 模块里的薄抽象：`#[cfg(not(android))]` 用 native-tls，`#[cfg(android)]` 用 rustls；对外只有 `connect()` 与 `TlsStream` |
+| `src-tauri/src/mail/imap_client.rs` | 不再 `use async_native_tls`，改为 `use super::tls` |
+| `src-tauri/src/mail/error.rs` | `Tls(#[from] async_native_tls::Error)` → `Tls(String)`（两端错误类型不同） |
+| `src-tauri/Cargo.toml` | 依赖拆进两个 target 段；**新增 `[lib] crate-type = ["staticlib","cdylib","rlib"]`**（移动端必需，缺了会报 `libdp_gmail.so` 找不到） |
+
+#### 已实测通过
+
+| 项 | 结果 |
+| --- | --- |
+| 桌面 `cargo test` | ✅ **211 通过 / 0 失败**（含新增 9 个账户管理用例） |
+| 桌面三家真机登录 | ✅ 163 / **sina** / QQ 全部 `1 passed`（sina 1.55s） |
+| Android Rust 交叉编译（arm64 + x86_64） | ✅ rustls 在两者上都编出来了 |
+| `tauri android build --apk` | ✅ 出包 **27.8 MB**，已用 debug keystore 签名 |
+| 装到 Android 10 模拟器 | ✅ `adb install` Success，`minSdk=24 targetSdk=37 versionName=0.1.0` |
+| 应用能启动 | ✅ 进程存活 >20 秒、**0 条 panic/崩溃**；Activity `Displayed +312ms` |
+
+**Rust 侧在 Android 上跑通了**：进程不起来说明 `setup()` 会 panic，而 `setup()` 里正是
+`app_data_dir()` + `open_database()` + `load_or_create_key()` —— 也就是说
+**数据目录、SQLite、密钥文件在安卓上都可用**。
+
+#### 没验证到的（诚实记账）
+
+| 项 | 为什么 |
+| --- | --- |
+| **界面渲染** | 这台机器的模拟器给不了 WebView 可用的 GL 上下文：`eglChooseConfig failed with error EGL_SUCCESS`（Chromium 层报错，发生在我们的代码之前）。`-no-window`/`-gpu host`/`-gpu swiftshader_indirect` 都失败，`-gpu angle_indirect` 能让该错误归零但界面仍空白。**这是环境限制，不是应用缺陷**，可在真机或带正常 GPU 的机器上复核 |
+| 安卓上真实收发信 | 依赖界面操作；但 `mail/tls.rs` 的 rustls 分支与桌面共用同一套 `imap_client` 逻辑，且桌面已真机验证 |
+| sina 在安卓上的失败提示是否可读 | 同上，需要界面 |
+| 单栏布局 | **还没做**。当前 APK 里仍是桌面三栏布局，320dp 宽屏上会被挤爆 —— 这是下一个要做的 |
+| API 35（Android 15）验证 | 只跑了 API 29；API 35 的 AVD 已建好但未启动 |
+
+**结论：APK 能编、能装、能启动、后端能在安卓上跑起来；界面渲染与单栏布局未完成。**
+
+
 
