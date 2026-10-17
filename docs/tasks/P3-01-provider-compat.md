@@ -255,7 +255,31 @@ a1 ID ("name" "dp_Gmail" "version" "0.1.0" "vendor" "dp_Gmail")
 | 项 | 说明 |
 | --- | --- |
 | **`ID` 是否真能解除 `Unsafe Login`** | ⛔ 「发了 `ID` 之后 `SELECT` 是否真的不再被拒」**仍需真实账号**。命令被接受 ≠ 限制被解除 |
-| 表里 8 家个人邮箱的真实登录 | ⛔ 地址已用 TLS 证书核实，但只真机登录过 QQ 一家 |
+| 表里 8 家个人邮箱的真实登录 | 🟨 2026-10-17 **连接层 8/8 走通**（见 §7.3）；⛔ 但**成功登录只验证过 QQ 一家** |
+
+### 7.3 连接层：表里 8 家全部走通（2026-10-17）
+
+加服务商时最容易犯的错，是只验证「**地址**是对的」（用别的工具探一下主机通不通），
+却漏掉「**我们的代码**连得上」。这两件事不是一回事 —— TLS 栈、超时、
+问候语解析、`CAPABILITY` 任何一环出问题，都只在真跑时才暴露。
+
+`live_every_personal_provider_reaches_login_rejection` **从 `PROVIDERS` 取地址**，
+所以以后再加服务商会**自动**被覆盖，不需要有人记得补测试。实测 8/8：
+
+| 服务商 | 服务器回什么 |
+| --- | --- |
+| qq | `Login fail. Please input email address` |
+| netease163 / netease126 / netease_yeah | `LOGIN Login error or password error` |
+| sina | `LOGIN authentication error` |
+| china_mobile_139 | `LOGIN errno:1424, account not exist` |
+| china_telecom_189 | `LOGIN failure, domain is disable.` |
+| aliyun_personal | `LOGIN failed.` |
+
+**八家回话各不相同** —— 这本身旁证了确实在和八台不同的服务器说话，
+而不是某个代理返回同样的东西。耗时 14.4 秒。
+
+判据仍是「错误落在 `MailError::Imap` 变体上」：任何一环没走通，
+错误会落在 `Tls` / `Io` / `Timeout` 上，这条用例就会 panic 并指名是哪一家。
 
 | 项 | 说明 |
 | --- | --- |

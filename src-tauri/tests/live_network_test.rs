@@ -25,7 +25,7 @@
 
 use dp_gmail::mail::error::MailError;
 use dp_gmail::mail::imap_client::connect_and_login;
-use dp_gmail::mail::provider::{ProviderConfig, TlsMode};
+use dp_gmail::mail::provider::{ProviderConfig, TlsMode, PROVIDERS};
 use dp_gmail::mail::smtp::{send_mail, OutgoingMail};
 
 /// 伪造凭证。**不得**替换成真实账号 —— 本文件会被反复执行。
@@ -142,4 +142,49 @@ async fn live_smtp_starttls_reaches_server_rejection() {
         Err(e) => e,
     };
     expect_protocol_rejection(&err, "SMTP 587 STARTTLS 升级");
+}
+
+/// 表里**每一家个人邮箱**都要走得通连接层。
+///
+/// 地址是 `PROVIDERS` 里取的，所以**以后再加服务商会自动被这条覆盖** ——
+/// 不需要有人记得补测试。
+///
+/// 为什么单独需要它：加服务商时容易只验证「地址是对的」（例如用别的工具
+/// 探一下主机通不通），却漏掉「**我们的代码**连得上」。这两件事不是一回事 ——
+/// TLS 栈、超时、问候语解析、`CAPABILITY` 任何一环出问题，都只有在真跑时才暴露。
+#[tokio::test]
+#[ignore = "真实网络：会依次连接表里每一家服务器"]
+async fn live_every_personal_provider_reaches_login_rejection() {
+    let personal: Vec<_> = PROVIDERS.iter().filter(|p| !p.domains.is_empty()).collect();
+    println!("[覆盖] 表里个人邮箱 {} 家", personal.len());
+
+    let mut covered = 0;
+    for cfg in &personal {
+        let err = match connect_and_login(cfg, FAKE_USER, FAKE_SECRET).await {
+            Ok(_) => panic!("{} 用伪造凭证不该登录成功", cfg.id),
+            Err(e) => e,
+        };
+
+        match &err {
+            MailError::Imap(reason) => {
+                covered += 1;
+                println!(
+                    "[覆盖] ✅ {}（{}）{} —— 链路走通，服务器拒绝登录: {reason}",
+                    cfg.id, cfg.display_name, cfg.imap_host
+                );
+            }
+            other => panic!(
+                "[覆盖] ⛔ {} 的 {} 期望在协议层被拒，实际是 {other:?} —— \
+                 地址、TLS 或问候语至少有一处不对",
+                cfg.id, cfg.imap_host
+            ),
+        }
+    }
+
+    assert_eq!(
+        covered,
+        personal.len(),
+        "应当每一家都走到协议层，实际只走通 {covered}/{}",
+        personal.len()
+    );
 }
