@@ -116,3 +116,64 @@
 - 单栏布局**尚未实现**
 
 以上全部推平之前，本项目的状态是「**桌面可用，Android 未开始**」。
+
+---
+
+## 9. 实测撞到的硬阻塞：TLS 后端（2026-10-17）
+
+`tauri android init` **已成功**（生成了 `src-tauri/gen/android/dp_gmail`），
+模拟器也**实测能启动**（`emulator-5554 device`，API 29）。
+
+但 `tauri android build --apk --target aarch64` **失败**，卡在 `openssl-sys`：
+
+```
+Could not find directory of OpenSSL installation, and this `-sys` crate
+cannot proceed without this knowledge.
+--- stderr
+$HOST = x86_64-pc-windows-msvc
+$TARGET = aarch64-linux-android
+openssl-sys = 0.9.117
+```
+
+### 9.1 为什么会这样
+
+`native-tls` 在**不同平台用不同的后端**：
+
+| 平台 | native-tls 的后端 | 是否需要额外编译 |
+| --- | --- | --- |
+| Windows | SChannel（系统自带） | ❌ 不需要 |
+| macOS | Secure Transport | ❌ 不需要 |
+| **Android / Linux** | **OpenSSL** | ✅ **必须现场有 OpenSSL** |
+
+依赖链（`cargo tree -i openssl-sys --target aarch64-linux-android` 实测）：
+
+```
+openssl-sys
+├── native-tls
+│   ├── async-native-tls  ← dp-gmail（IMAP）
+│   ├── lettre            ← dp-gmail（SMTP）
+│   └── tokio-native-tls  ← lettre
+└── openssl
+```
+
+也就是说：**桌面能编，是因为 Windows 走了 SChannel，完全没碰 OpenSSL。**
+一到 Android 就绕不开。
+
+### 9.2 本机还缺编 OpenSSL 的工具
+
+`openssl` crate 的 `vendored` 特性会现场编 OpenSSL，但它需要 **perl** 与 **make**：
+
+| 工具 | 状态 |
+| --- | --- |
+| perl | ❌ 没有 |
+| nmake / make / mingw32-make | ❌ 都没有 |
+
+### 9.3 三条路（**需要用户决定**）
+
+| 方案 | 做法 | 代价 |
+| --- | --- | --- |
+| **A. 换 rustls** | `async-native-tls` → `rustls`/`tokio-rustls`；`lettre` 改 `tokio1-rustls` | **新增依赖 + 改安全代码**（TLS 校验逻辑），按 `AGENTS.md` 第 1/7 条必须批准；根证书来源要另定（`webpki-roots` 静态包 vs 系统证书）。好处是全平台**一套 TLS 栈**，不再依赖系统库 |
+| **B. 硬编 OpenSSL** | 装 Strawberry Perl + make，给 `openssl` 开 `vendored` | 不动一行 TLS 逻辑，但 Windows 上给 Android 编 OpenSSL 很脆；且**每次清理缓存后都要重编**（十几分钟起） |
+| **C. 放弃 Android** | —— | 桌面端已经完整可用 |
+
+**A 是跨平台 Rust 项目的标准解法，但它动的是加密相关代码，必须用户明确批准后才做。**
