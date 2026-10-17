@@ -3,6 +3,9 @@
  *
  * 同步成功后会拿到后端建好的 `folder_id`，写进 Zustand，
  * 邮件列表据此查询。
+ *
+ * 同时承担**自动收信**的挂载点：它本来就持有「哪个账户 + 哪个信箱」这两个参数，
+ * 放到别处还得再把它们传一遍。
  */
 
 import { useState } from "react";
@@ -10,7 +13,9 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 import { api, type AccountView } from "../../lib/api";
 import { useT } from "../../lib/i18n/useT";
+import { useAutoSync } from "../../stores/autoSync";
 import { useSelection } from "../../stores/selection";
+import { useAutoSyncLoop } from "./useAutoSyncLoop";
 
 const DEFAULT_MAILBOX = "INBOX";
 const SYNC_BATCH = 50;
@@ -26,7 +31,10 @@ export default function InboxToolbar({ accounts }: Props) {
   const accountId = useSelection((state) => state.accountId);
   const setAccount = useSelection((state) => state.setAccount);
   const showFolder = useSelection((state) => state.showFolder);
+  const autoSyncEnabled = useAutoSync((state) => state.enabled);
   const queryClient = useQueryClient();
+
+  useAutoSyncLoop(autoSyncEnabled, accountId, mailbox);
 
   const sync = useMutation({
     mutationFn: () => api.syncFolder(accountId as number, mailbox, SYNC_BATCH),
@@ -82,6 +90,11 @@ export default function InboxToolbar({ accounts }: Props) {
         </p>
       )}
       {accounts.length === 0 && <p className="toolbar__hint">{t("toolbar.noAccounts")}</p>}
+
+      {/* 说明列表会自己刷新 —— 否则用户看到邮件自动冒出来会以为是 bug */}
+      {autoSyncEnabled && accountId !== null && (
+        <p className="toolbar__hint">{t("autoSync.toolbarHint")}</p>
+      )}
     </div>
   );
 }

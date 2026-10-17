@@ -15,9 +15,8 @@ import { emptyHint, listTitle } from "./features/inbox/listLabels";
 import MessageList from "./features/inbox/MessageList";
 import SearchBox from "./features/inbox/SearchBox";
 import { useAccounts, useFolders, usePagedRows } from "./features/inbox/useInbox";
-import AppearancePicker from "./features/settings/AppearancePicker";
-import LanguageSelect from "./features/settings/LanguageSelect";
-import ThemeToggle from "./features/settings/ThemeToggle";
+import SettingsButton from "./features/settings/SettingsButton";
+import SettingsDialog from "./features/settings/SettingsDialog";
 import { useT } from "./lib/i18n/useT";
 import { useAppliedLang } from "./stores/language";
 import { useSelection } from "./stores/selection";
@@ -48,9 +47,7 @@ export default function App() {
       <aside className="app__sidebar">
         <h1 className="app__title">dp_Gmail</h1>
 
-        <ThemeToggle />
-        <AppearancePicker />
-        <LanguageSelect />
+        <SettingsButton />
 
         <button type="button" className="button" onClick={() => openCompose()}>
           {t("app.compose")}
@@ -94,6 +91,8 @@ export default function App() {
       <DetailPane />
 
       <ComposeForm />
+
+      <SettingsDialog />
     </div>
   );
 }
