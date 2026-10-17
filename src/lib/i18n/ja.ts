@@ -52,6 +52,20 @@ export const ja: Record<Key, string> = {
   "accountList.empty": "アカウントがありません。上のフォームで追加してください。",
   "accountList.hasSecret": "認証情報あり",
   "accountList.noSecret": "⚠ 認証情報なし",
+  "accountList.edit": "編集",
+  "accountList.delete": "削除",
+  "accountList.deleteTitle": "アカウントを削除しますか？",
+  "accountList.deleteWarn":
+    "このアカウントで取得済みのメールと添付ファイルも同時に削除されます。元に戻せません。",
+  "accountList.confirmDelete": "削除する",
+  "accountList.cancel": "キャンセル",
+  "accountList.deleting": "削除中…",
+
+  "accountEdit.heading": "アカウントを編集",
+  "accountEdit.secret": "新しい認証コード（空欄なら変更しない）",
+  "accountEdit.save": "保存",
+  "accountEdit.saving": "保存中…",
+  "accountEdit.cancel": "キャンセル",
 
   "provider.detected": "識別済み：{name}（{host}:{port}）",
   "provider.notDetected":

@@ -15,7 +15,8 @@ pub mod schema;
 pub mod search_store;
 
 pub use account_store::{
-    create_account, list_accounts, load_account_credentials, load_encrypted_secret,
+    create_account, delete_account, list_accounts, load_account_credentials, load_encrypted_secret,
+    update_account, AccountDeletionImpact,
     AccountCredentials, AccountRecord,
 };
 pub use error::StorageError;

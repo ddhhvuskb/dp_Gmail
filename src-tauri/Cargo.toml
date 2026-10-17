@@ -53,3 +53,20 @@ futures = "0.3"
 thiserror = "2"
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "net", "time", "io-util"] }
 tracing = "0.1"
+
+# ── 构建产物体积 ────────────────────────────────────────────────
+# 背景：2026-10-17 实测 `target/` 涨到 22.72 GB，其中 debug 占 20.49 GB。
+# 原因不是代码大，而是 `tests/` 下 28 个集成测试二进制在 debug 下**各自完整链接
+# 整棵依赖树**，并各自生成调试符号 —— 光 `deps` 里就有 80 个 >100 MB 的 .pdb。
+#
+# 两条改动都**不影响功能**，只影响调试信息与符号：
+#   debug = 1    只要行号表，不要变量/类型信息（崩溃回溯仍有文件:行号）
+#   strip = true 正式产物在链接后剥掉符号，exe 更小
+# 若日后需要完整调试，把 debug 改回 2 即可。
+
+[profile.dev]
+debug = 1
+
+[profile.release]
+strip = true
+

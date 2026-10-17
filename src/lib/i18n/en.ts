@@ -52,6 +52,20 @@ export const en: Record<Key, string> = {
   "accountList.empty": "No accounts yet. Add one with the form above.",
   "accountList.hasSecret": "Credentials stored",
   "accountList.noSecret": "⚠ No credentials",
+  "accountList.edit": "Edit",
+  "accountList.delete": "Delete",
+  "accountList.deleteTitle": "Delete this account?",
+  "accountList.deleteWarn":
+    "Its downloaded messages and attachments are deleted too. This cannot be undone.",
+  "accountList.confirmDelete": "Delete",
+  "accountList.cancel": "Cancel",
+  "accountList.deleting": "Deleting…",
+
+  "accountEdit.heading": "Edit account",
+  "accountEdit.secret": "New app password (leave blank to keep the current one)",
+  "accountEdit.save": "Save",
+  "accountEdit.saving": "Saving…",
+  "accountEdit.cancel": "Cancel",
 
   "provider.detected": "Detected: {name} ({host}:{port})",
   "provider.notDetected":

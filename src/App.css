@@ -974,6 +974,77 @@ body,
   border-style: solid;
 }
 
+/* ── 账户行：编辑 / 删除 ───────────────────────── */
+
+.account-row {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.account-row__actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.account-row__action {
+  padding: 2px 8px;
+  border: 1px solid var(--border);
+  background: none;
+  color: var(--text);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.account-row__action:hover:not(:disabled) {
+  border-color: var(--accent);
+}
+
+.account-row__action:disabled {
+  color: var(--muted);
+  cursor: not-allowed;
+}
+
+/* 删除是不可逆的，用危险色把它和「编辑」区分开 */
+.account-row__action--danger {
+  color: var(--danger);
+  border-color: color-mix(in srgb, var(--danger) 45%, var(--border));
+}
+
+.account-row__confirm {
+  margin-top: 6px;
+  padding: 8px;
+  border: 1px solid color-mix(in srgb, var(--danger) 40%, var(--border));
+  background: color-mix(in srgb, var(--danger) 7%, transparent);
+}
+
+.account-row__warn {
+  margin: 0 0 4px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.account-edit {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.account-edit__heading {
+  margin: 0 0 2px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.account-edit__actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 .settings {
   position: fixed;
   inset: 0;

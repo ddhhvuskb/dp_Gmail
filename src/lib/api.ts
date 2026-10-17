@@ -127,9 +127,37 @@ export const api = {
       providerId: providerId ?? null,
     }),
 
+  /**
+   * 编辑已有账户。
+   *
+   * `secret` 传 `undefined` 表示**不改凭证** —— 只改显示名或邮箱时不必重填授权码。
+   * 改邮箱会由后端重新解析服务商（地址变了，连接参数必须跟着变）。
+   */
+  updateAccount: (
+    accountId: number,
+    email: string,
+    displayName?: string,
+    secret?: string,
+    providerId?: string,
+  ) =>
+    invoke<AccountView>("update_account", {
+      accountId,
+      email,
+      displayName: displayName ?? null,
+      secret: secret ?? null,
+      providerId: providerId ?? null,
+    }),
+
+  /**
+   * 删除账户，**连带删除它已下载的文件夹、邮件与附件**。
+   *
+   * 不可逆。调用方必须先让用户确认。
+   */
+  deleteAccount: (accountId: number) =>
+    invoke<{ messages: number; attachments: number }>("delete_account", { accountId }),
+
   /** `accountId` 传 `null` 即列出全部账户的文件夹。 */
   listFolders: (accountId: number | null) => invoke<FolderRecord[]>("list_folders", { accountId }),
-
   getMessages: (folderId: number, limit: number, offset: number) =>
     invoke<MessageSummary[]>("get_messages", { folderId, limit, offset }),
 

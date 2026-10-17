@@ -71,6 +71,19 @@ export const zh = {
   "accountList.empty": "还没有账户。用上面的表单添加一个。",
   "accountList.hasSecret": "已存凭证",
   "accountList.noSecret": "⚠ 无凭证",
+  "accountList.edit": "编辑",
+  "accountList.delete": "删除",
+  "accountList.deleteTitle": "删除账户？",
+  "accountList.deleteWarn": "会同时删除该账户已下载的邮件与附件，不可恢复。",
+  "accountList.confirmDelete": "确认删除",
+  "accountList.cancel": "取消",
+  "accountList.deleting": "删除中…",
+
+  "accountEdit.heading": "编辑账户",
+  "accountEdit.secret": "新授权码（留空＝不修改）",
+  "accountEdit.save": "保存",
+  "accountEdit.saving": "保存中…",
+  "accountEdit.cancel": "取消",
 
   // ── 服务商识别 / 选择 ───────────────────────────────────────
   "provider.detected": "已识别：{name}（{host}:{port}）",
