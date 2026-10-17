@@ -106,6 +106,81 @@ pub const PROVIDERS: &[ProviderConfig] = &[
         smtp_port: 465,
         smtp_tls: TlsMode::Implicit,
     },
+    // ---- 其余国内个人邮箱 ----
+    //
+    // 地址来源：2026-10-17 **TLS 实测**核实（TCP 连通 + 证书主机名匹配 + banner），
+    // 与此前「找不到权威页面就留空」相比，这是更强的证据 ——
+    // 证书主机名匹配直接证明该地址属于这家服务商。
+    //
+    // 实测确认这六家的 `CAPABILITY` **都广告 `ID`**（126 / yeah.net 是 Coremail，
+    // 与 163 同源），故 `send_client_id_if_supported` 会自动覆盖，无需特判。
+    ProviderConfig {
+        id: "netease126",
+        display_name: "网易126邮箱",
+        domains: &["126.com"],
+        imap_host: "imap.126.com",
+        imap_port: 993,
+        imap_tls: TlsMode::Implicit,
+        smtp_host: "smtp.126.com",
+        smtp_port: 465,
+        smtp_tls: TlsMode::Implicit,
+    },
+    ProviderConfig {
+        id: "netease_yeah",
+        display_name: "网易yeah.net邮箱",
+        domains: &["yeah.net"],
+        imap_host: "imap.yeah.net",
+        imap_port: 993,
+        imap_tls: TlsMode::Implicit,
+        smtp_host: "smtp.yeah.net",
+        smtp_port: 465,
+        smtp_tls: TlsMode::Implicit,
+    },
+    ProviderConfig {
+        id: "sina",
+        display_name: "新浪邮箱",
+        // `sina.cn` **未实测**，故不写入 —— 宁可少一项也不填可能连不上的地址。
+        domains: &["sina.com"],
+        imap_host: "imap.sina.com",
+        imap_port: 993,
+        imap_tls: TlsMode::Implicit,
+        smtp_host: "smtp.sina.com",
+        smtp_port: 465,
+        smtp_tls: TlsMode::Implicit,
+    },
+    ProviderConfig {
+        id: "china_mobile_139",
+        display_name: "中国移动139邮箱",
+        domains: &["139.com"],
+        imap_host: "imap.139.com",
+        imap_port: 993,
+        imap_tls: TlsMode::Implicit,
+        smtp_host: "smtp.139.com",
+        smtp_port: 465,
+        smtp_tls: TlsMode::Implicit,
+    },
+    ProviderConfig {
+        id: "china_telecom_189",
+        display_name: "中国电信189邮箱",
+        domains: &["189.cn"],
+        imap_host: "imap.189.cn",
+        imap_port: 993,
+        imap_tls: TlsMode::Implicit,
+        smtp_host: "smtp.189.cn",
+        smtp_port: 465,
+        smtp_tls: TlsMode::Implicit,
+    },
+    ProviderConfig {
+        id: "aliyun_personal",
+        display_name: "阿里云邮箱（个人）",
+        domains: &["aliyun.com"],
+        imap_host: "imap.aliyun.com",
+        imap_port: 993,
+        imap_tls: TlsMode::Implicit,
+        smtp_host: "smtp.aliyun.com",
+        smtp_port: 465,
+        smtp_tls: TlsMode::Implicit,
+    },
 ];
 
 /// 由邮箱地址解析服务商配置。

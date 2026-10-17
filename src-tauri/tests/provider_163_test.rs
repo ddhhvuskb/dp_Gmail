@@ -64,19 +64,40 @@ fn qq_entry_is_unchanged_by_the_addition() {
 }
 
 #[test]
-fn unrelated_domains_still_resolve_to_nothing() {
-    // 未核实的服务商一律留空待补（见 P3-01 §2.3），此处固化该决定：
-    // 宁可识别不出、让用户手填，也不填一个可能连不上的地址。
+fn formerly_unverified_domains_now_resolve() {
+    // 这条的前身是 `unrelated_domains_still_resolve_to_nothing` —— 它当时固化的是
+    // 「126 / yeah.net / sina / 139 / 189 未核实，一律留空」这个决定（P3-01 §2.3）。
+    //
+    // 2026-10-17 用 TLS 实测（TCP + **证书主机名匹配** + banner）核实了它们，
+    // 前提不再成立，故断言方向反转：现在**必须**解析得到。
+    // 否则等于把已经拿到的核实结果又丢回去。
+    for (email, expected_id) in [
+        ("someone@126.com", "netease126"),
+        ("someone@yeah.net", "netease_yeah"),
+        ("someone@sina.com", "sina"),
+        ("someone@139.com", "china_mobile_139"),
+        ("someone@189.cn", "china_telecom_189"),
+        ("someone@aliyun.com", "aliyun_personal"),
+    ] {
+        let found =
+            resolve_by_email(email).unwrap_or_else(|| panic!("{email} 已核实，应当能解析出来"));
+        assert_eq!(found.id, expected_id, "{email} 解析到了错误的服务商");
+    }
+}
+
+#[test]
+fn genuinely_unverified_domains_still_resolve_to_nothing() {
+    // 「未核实就留空」这条规矩**没变**，只是名单缩小了。
+    // `sina.cn` 是新浪的另一个域名，但**没有实测过**，所以仍留在名单里 ——
+    // 这正是规则起作用的证据：同属一家，也不能顺手套用。
     for email in [
-        "someone@126.com",
-        "someone@yeah.net",
-        "someone@sina.com",
-        "someone@139.com",
-        "someone@189.cn",
+        "someone@sina.cn",
+        "someone@gmail.com",
+        "someone@outlook.com",
     ] {
         assert!(
             resolve_by_email(email).is_none(),
-            "{email} 尚未核实，不应出现在服务商表里"
+            "{email} 未经实测，不应出现在服务商表里"
         );
     }
 }

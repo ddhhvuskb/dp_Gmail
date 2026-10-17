@@ -19,27 +19,46 @@
 
 ### 2.1 个人邮箱（可用域名自动识别）
 
-| 服务商 | IMAP | SMTP | 来源 |
+来源分两类：**厂商官方页**，或 **2026-10-17 的 TLS 实测**。后者更强 ——
+证书主机名匹配直接证明该地址属于这家服务商，不是转述。
+
+| 服务商 | IMAP | SMTP | 核实方式 |
 | --- | --- | --- | --- |
-| QQ 邮箱 | `imap.qq.com:993` | `smtp.qq.com:465` | QQ 官方帮助页（P0-01 已核实） |
-| 网易 163 个人邮箱 | `imap.163.com:993` | `smtp.163.com:465` | [Zoho 汇总表](https://zdblogs.zoho.com.cn/mail/articles/pop513.html) ✅ **已加入服务商表** |
+| QQ 邮箱 | `imap.qq.com:993` | `smtp.qq.com:465` | 官方帮助页（P0-01）+ TLS 实测 |
+| 网易 163 | `imap.163.com:993` | `smtp.163.com:465` | Zoho 汇总表 + TLS 实测 |
+| 网易 126 | `imap.126.com:993` | `smtp.126.com:465` | **TLS 实测**，证书 `*.126.com` |
+| 网易 yeah.net | `imap.yeah.net:993` | `smtp.yeah.net:465` | **TLS 实测**，证书 `*.yeah.net` |
+| 新浪邮箱 | `imap.sina.com:993` | `smtp.sina.com:465` | **TLS 实测**，证书 `*.sina.com` |
+| 中国移动 139 | `imap.139.com:993` | `smtp.139.com:465` | **TLS 实测**，证书 SAN 含 `imap.139.com` |
+| 中国电信 189 | `imap.189.cn:993` | `smtp.189.cn:465` | **TLS 实测**，证书 `*.189.cn` |
+| 阿里云（个人） | `imap.aliyun.com:993` | `smtp.aliyun.com:465` | **TLS 实测**，证书 SAN 含 `aliyun.com` |
 
-### 2.2 企业邮箱（**无法**用域名自动识别，见 §4）
+**这六家的 `CAPABILITY` 都广告 `ID`**（126 / yeah.net 是 Coremail，与 163 同源），
+故 `send_client_id_if_supported` 自动覆盖，**无需按服务商特判**。
 
-来源：<https://www.west.cn/faq/listagent.asp?unid=2132>（企业邮箱 POP/SMTP/IMAP 汇总表）
+### 2.2 企业邮箱（**无法**用域名自动识别，见 §5）
+
+来源：<https://www.west.cn/faq/listagent.asp?unid=2132> **+ 2026-10-17 TLS 实测**
 
 | 服务商 | IMAP | SMTP |
 | --- | --- | --- |
 | 腾讯企业邮 | `imap.exmail.qq.com:993` | `smtp.exmail.qq.com:465` |
-| 网易企业邮 | `imap.qiye.163.com:993` | `smtp.qiye.163.com:994` |
+| 网易企业邮 | `imap.qiye.163.com:993` | **`smtp.qiye.163.com:994`** ← 实测确认，不是常见的 465 |
 | 阿里云企业邮箱（原万网） | `imap.mxhichina.com:993` | `smtp.mxhichina.com:465` |
 
 ### 2.3 仍未核实（**不得凭记忆填入**）
 
-`126.com`、`yeah.net`（网易系其它域名）、`sina.com`、`139.com`、`189.cn`、`aliyun.com`。
+本节原先列的六个域名，**2026-10-17 已全部用 TLS 实测核实**（见 §2.1）。名单缩小到：
 
-两轮检索都没找到覆盖它们的权威页面。按 `AGENTS.md`「不猜」，这些留空待补，
-**宁可表里少几项，也不填一个可能连不上的地址**。
+| 域名 | 为什么仍留空 |
+| --- | --- |
+| `sina.cn` | 新浪的另一个域名。同属一家，但**没有实测过** |
+| `10086.cn` | 中国移动的另一个域名，未实测 |
+| `gmail.com` / `outlook.com` | 需要 OAuth（P3-02），密码登录会被服务商拒绝 |
+
+**同属一家不等于可以顺手套用。** 这正是
+`genuinely_unverified_domains_still_resolve_to_nothing` 这条测试守着的东西 ——
+「未核实就留空」的规矩没变，只是名单变短了。
 
 ### 2.4 STARTTLS 支持情况（2026-10-17 实测，非文档转述）
 
@@ -193,7 +212,7 @@ pub fn resolve_by_email(email: &str) -> Option<&'static ProviderConfig> {
 
 | 项 | 状态 |
 | --- | --- |
-| 免费个人邮箱地址核实 | 🟨 163 **已加入服务商表**；126 / yeah.net / sina.com / 139 / 189 未找到权威来源 |
+| 免费个人邮箱地址核实 | ✅ 2026-10-17 **126 / yeah.net / sina / 139 / 189 / aliyun 六项已用 TLS 实测核实并加入服务商表**；`sina.cn` / `10086.cn` 等仍未实测，留空 |
 | 网易 IMAP `ID` 命令支持 | ✅ 已实现（见 §3），**真机未验证** |
 | 企业邮箱的手动选择 UI | ✅ 已完成（ADR-0004）：`list_providers` + `ProviderField`，真实窗口已验证 |
 | 企业邮箱地址核实 | ✅ 2026-10-17 改用 **TLS 实测**核实（证书主机名匹配），见 ADR-0004 §4 |
