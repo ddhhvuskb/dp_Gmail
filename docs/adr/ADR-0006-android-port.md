@@ -177,3 +177,66 @@ openssl-sys
 | **C. 放弃 Android** | —— | 桌面端已经完整可用 |
 
 **A 是跨平台 Rust 项目的标准解法，但它动的是加密相关代码，必须用户明确批准后才做。**
+
+### 9.4 实测结果（2026-10-17，用户选「试试 ssl」后）
+
+用户先选了 A（rustls），实现完发现**新问题**，随后改试 B（OpenSSL）。
+
+**A 的实测结论：rustls 用不了，因为 sina。**
+
+逐条限制密码套件实测 sina 的 IMAP：
+
+| 约束 | sina 结果 |
+| --- | --- |
+| 默认 | ✅ `DHE-RSA-AES256-GCM-SHA384` |
+| **只允许 ECDHE** | ❌ 握手失败（alert 40） |
+| 只允许 DHE | ✅ `DHE-RSA-AES256-GCM-SHA384` |
+| 只允许纯 RSA 密钥交换 | ✅ `AES256-GCM-SHA384` |
+| **仅 TLS 1.3** | ❌ 握手失败 |
+
+即 **sina 的 IMAP 只提供 TLS1.2 + 有限域 DHE / 纯 RSA 密钥交换，没有 ECDHE，也没有 TLS1.3**。
+
+而 **rustls 从设计上不支持有限域 DHE，也不支持 RSA 密钥交换，只做 ECDHE + TLS1.3**。
+BoringSSL（Chrome 用的那个）同样已移除 DHE，所以也不行。
+支持 DHE 的只有 **OpenSSL / mbedTLS / Schannel**。
+
+顺带否掉 mbedTLS：**`lettre` 只有 native-tls / rustls / boring-tls 三个后端，没有 mbedTLS**，
+所以 mbedTLS 只能修 IMAP，SMTP 还得再挂一套 —— 两个 TLS 栈，比现状更差。
+
+**B 的实测结论：Windows 上给 Android 编 OpenSSL 走不通。**
+
+装了 Strawberry Perl 5.42.3（986 MB）+ 自带 gmake 4.4.1，然后：
+
+```toml
+[target.'cfg(target_os = "android")'.dependencies]
+native-tls = { version = "0.2", features = ["vendored"] }   # = openssl/vendored
+```
+
+`cargo build --target aarch64-linux-android` 在 79 秒后失败：
+
+```
+running "perl" "./Configure" ... "no-shared" "no-module" "no-tests" "no-comp"
+Configuring OpenSSL version 3.6.3 for target linux-aarch64
+cargo:warning=configuring OpenSSL build: 'perl' reported failure with exit code: 255
+Failure!  Makefile wasn't produced.
+This perl implementation doesn't produce Unix like paths (with forward slash)
+This Perl version: 5.42.3 for MSWin32-x64-multi-thread
+```
+
+**根因不是配置错误，是 OpenSSL 的硬限制**：目标为 `linux-aarch64` 时，
+OpenSSL 的 `Configure` 要求宿主 perl 输出 **Unix 风格路径**；原生 Windows perl 给的是
+`D:\...`，它直接拒绝生成 Makefile。这是 Windows 上交叉编译 OpenSSL 的著名坑。
+
+配置已回退，工作区干净，桌面应用未受影响。
+
+### 9.5 现在还剩哪些路
+
+| 路 | 把握 | 代价 |
+| --- | --- | --- |
+| **C1. 装 MSYS2，用它的 perl + make** | 中 | MSYS2 的 perl 是 POSIX 风格，`Configure` 可能通过；但还要再装 ~1 GB，且**不保证**后面没有新坑 |
+| **C2. 用网上预编译的 Android OpenSSL** | 高 | 往**加密路径**里塞来路不明的二进制，供应链风险，不推荐 |
+| **C3. 退路：桌面 native-tls + 安卓 rustls** | 高 | 一套代码走不通，要按平台条件编译；**sina 的 IMAP 在安卓上用不了**（其余 7 家 + sina 发信正常） |
+
+**推荐 C3**：它是唯一能把「已真机验证过的桌面端」原样保住的方案，
+代价只是安卓上少一家服务商的收信能力，且这条限制可以如实写在界面上。
+
