@@ -188,3 +188,66 @@ async fn live_every_personal_provider_reaches_login_rejection() {
         personal.len()
     );
 }
+
+/// 表里**每一家个人邮箱的 SMTP** 也要走得通。与 IMAP 那条对称。
+///
+/// ## 为什么断言写得比 IMAP 那条更细
+///
+/// lettre 把**连接失败和 TLS 失败都**包进它自己的 `smtp::Error`，
+/// 所以「错误是 `MailError::Smtp`」**并不能证明握手成功** ——
+/// 主机名写错、证书不匹配，同样会走到这个分支。
+///
+/// 因此必须再要求两件事：
+///
+/// 1. `status().is_some()` —— **服务器真的回出了 SMTP 状态码**，
+///    光连不上是不会有状态码的；
+/// 2. `!is_tls()` —— 明确排除 TLS 层失败。
+///
+/// 少了这两条，这条用例会在「地址全写错」的情况下**照样通过**。
+#[tokio::test]
+#[ignore = "真实网络：会依次连接表里每一家的 SMTP 服务器"]
+async fn live_every_personal_provider_smtp_reaches_auth_rejection() {
+    let personal: Vec<_> = PROVIDERS.iter().filter(|p| !p.domains.is_empty()).collect();
+    println!("[SMTP 覆盖] 表里个人邮箱 {} 家", personal.len());
+
+    let mut covered = 0;
+    for cfg in &personal {
+        let err = match send_mail(cfg, FAKE_USER, FAKE_SECRET, &probe_mail()).await {
+            Ok(()) => panic!("{} 用伪造凭证不该投递成功", cfg.id),
+            Err(e) => e,
+        };
+
+        match &err {
+            MailError::Smtp(reason) => {
+                assert!(
+                    reason.status().is_some(),
+                    "[SMTP] ⛔ {} 的 {} 没回状态码 —— 连接或 TLS 就没过：{reason:?}",
+                    cfg.id,
+                    cfg.smtp_host
+                );
+                assert!(
+                    !reason.is_tls(),
+                    "[SMTP] ⛔ {} 的 {} TLS 握手失败：{reason:?}",
+                    cfg.id,
+                    cfg.smtp_host
+                );
+                covered += 1;
+                println!(
+                    "[SMTP 覆盖] ✅ {}（{}）{} —— 服务器回出状态码并拒绝认证：{reason}",
+                    cfg.id, cfg.display_name, cfg.smtp_host
+                );
+            }
+            other => panic!(
+                "[SMTP 覆盖] ⛔ {} 的 {} 期望在 SMTP 层被拒，实际是 {other:?}",
+                cfg.id, cfg.smtp_host
+            ),
+        }
+    }
+
+    assert_eq!(
+        covered,
+        personal.len(),
+        "应当每一家都走到 SMTP 协议层，实际只走通 {covered}/{}",
+        personal.len()
+    );
+}

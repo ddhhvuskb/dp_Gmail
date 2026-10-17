@@ -281,6 +281,37 @@ a1 ID ("name" "dp_Gmail" "version" "0.1.0" "vendor" "dp_Gmail")
 判据仍是「错误落在 `MailError::Imap` 变体上」：任何一环没走通，
 错误会落在 `Tls` / `Io` / `Timeout` 上，这条用例就会 panic 并指名是哪一家。
 
+### 7.4 SMTP 连接层：同样 8/8（2026-10-17）
+
+与 §7.3 对称。发信路径此前只有 QQ 验过，另外 7 家从没走过我们的代码。
+
+**这条用例的断言必须比 IMAP 那条更细**：lettre 把**连接失败和 TLS 失败都**包进
+它自己的 `smtp::Error`，所以「错误是 `MailError::Smtp`」**并不能证明握手成功** ——
+主机名写错、证书不匹配，同样落进这个分支。因此额外要求：
+
+1. `status().is_some()` —— 服务器**真的回出了 SMTP 状态码**，连不上是不会有状态码的；
+2. `!is_tls()` —— 明确排除 TLS 层失败。
+
+> **少了这两条，这条用例会在「地址全写错」的情况下照样通过。** 这是本项目
+> 反复防的那类假阳性。
+
+实测 8/8，4.9 秒，状态码**互不相同**：
+
+| 服务商 | 状态码 | 服务器原话 |
+| --- | --- | --- |
+| qq | 535 | `Login fail. Account is abnormal, …` |
+| 163 / 126 / yeah.net | 535 | `Error: authentication failed` |
+| sina | 535 | `5.7.8 authentication failed` |
+| **china_mobile_139** | **454**（transient） | `Authentication failed(USER_NOTFOUND_ERR)` |
+| **china_telecom_189** | **550** | `Error: the invalide password` |
+| **aliyun_personal** | **526** | `Authentication failure[0]` |
+
+**状态码互不相同**同样旁证了在和八台不同服务器说话。
+
+> ⚠️ **139 对错误密码返回的是 `454`（transient，可重试类）而不是 535。**
+> 这是个反常行为：把它当「临时故障、稍后重试」的调用方会**反复重试错误密码**。
+> 当前 `send_mail` 不做重试，故无影响；但将来若加重试逻辑，必须先排除这一条。
+
 | 项 | 说明 |
 | --- | --- |
 | ~~163 的 `ID` 命令参数格式~~ | ✅ **2026-10-17 已实测**，见 §3.1 |
