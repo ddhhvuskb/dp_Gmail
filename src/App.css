@@ -642,8 +642,17 @@ body {
   border-right: 1px solid var(--glass-border);
 }
 
+/* 中栏与右栏：**不加**复杂效果，只给一个与主题配套的浅底 + 一道细高光。
+ * 用户明确要求「其他不用加」—— 所以不动布局、不加圆角、不加毛玻璃。 */
 .app__list {
   border-right: 1px solid var(--glass-border);
+  background: color-mix(in srgb, var(--surface) 52%, transparent);
+  box-shadow: inset 0 1px 0 var(--glass-border);
+}
+
+.app__detail {
+  background: color-mix(in srgb, var(--surface) 38%, transparent);
+  box-shadow: inset 0 1px 0 var(--glass-border);
 }
 
 /* 表单控件统一取主题色 —— 否则深色模式下输入框是黑字黑底 */
